@@ -7,7 +7,7 @@ Given below is a basic application. Each section has more alternatives like mysq
 
 **Installation**:
 
-It is recommended to use **pip** or **conda** for installation. Please make sure
+Python 2 is no longer supported. Make sure Python3+ is used as the programming language. The optimal version would be Python 3.7. It is recommended to use **pip** or **conda** for installation. Please make sure
 **the latest version** is installed, as pyfbad is updated frequently:
 
     pip install pyfbad            # normal install
@@ -118,5 +118,3 @@ Project Organization
     │
     └── tox.ini            <- tox file with settings for running tox; see tox.readthedocs.io
 
-
---------# pyfbad
