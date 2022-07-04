@@ -1,8 +1,7 @@
 from fbprophet import Prophet
 from sqlalchemy import *
 
-import json
-import logging
+
 import pandas as pd
 import requests
 from datetime import datetime, timedelta

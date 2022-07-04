@@ -1,13 +1,11 @@
 from typing import Collection
 from sqlalchemy import *
-import logging
 import pandas as pd
 import sys
 from datetime import datetime, timedelta
 import pymongo
 from sshtunnel import SSHTunnelForwarder
 
-logger = logging.getLogger('Database File')
 
 
 class MongoDB:
