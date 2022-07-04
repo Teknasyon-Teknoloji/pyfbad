@@ -1,9 +1,6 @@
 from fbprophet import Prophet
 from sqlalchemy import *
-
-
 import pandas as pd
-import requests
 from datetime import datetime, timedelta
 from sklearn.ensemble import IsolationForest
 

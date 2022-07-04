@@ -7,7 +7,6 @@ import pymongo
 from sshtunnel import SSHTunnelForwarder
 
 
-
 class MongoDB:
     def __init__(self, db_name, db_port, db_path):
         """ To initialize the mongodb connection.
