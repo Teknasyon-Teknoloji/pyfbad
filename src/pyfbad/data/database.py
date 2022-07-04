@@ -1,14 +1,17 @@
 from typing import Collection
 from sqlalchemy import *
+import logging
 import pandas as pd
 import sys
 from datetime import datetime, timedelta
 import pymongo
 from sshtunnel import SSHTunnelForwarder
 
+logger = logging.getLogger('Database File')
+
 
 class MongoDB:
-    def __init__(self, db_name, db_port, db_path): 
+    def __init__(self, db_name, db_port, db_path):
         """ To initialize the mongodb connection.
         Args:
             db_name (str): Database name ex. myMongoDB
@@ -18,27 +21,28 @@ class MongoDB:
         self._db_name = db_name
         self._db_port = db_port
         self._db_path = db_path
-        
+
     def get_mongo_db(self):
         """ Builds client and database objects to be read from.
         Returns:
             database (MongoClient): Database client object to read from
         """
         _config = {
-            'db_name' : self._db_name,
-            'db_path' : self._db_path,
-            'db_port' : self._db_port,
+            'db_name': self._db_name,
+            'db_path': self._db_path,
+            'db_port': self._db_port,
         }
         try:
             print("mongo init...")
-            client = pymongo.MongoClient(_config['db_path'],_config['db_port'])
+            client = pymongo.MongoClient(
+                _config['db_path'], _config['db_port'])
             database = client[_config['db_name']]
             print("mongo init done")
 
             return database
         except:
             print("Something went wrong when build the MongoDB client.")
-        
+
     def get_collection_names(self, database):
         """ Returns the collection names from given database.
         Args:
@@ -73,17 +77,19 @@ class MongoDB:
             records = collection.find()
         elif 'time' and 'value' in filter:
             records = collection.find(
-                {filter['time']['column_name']:{'$gte': filter['time']['start_time'], '$lte': filter['time']['finish_time']}},
+                {filter['time']['column_name']: {'$gte': filter['time']
+                                                 ['start_time'], '$lte': filter['time']['finish_time']}},
                 {filter['value']['column_name']: filter['value']['value']}
-                )
+            )
         elif 'time' in filter:
             records = collection.find(
-                {filter['time']['column_name']:{'$gte': filter['time']['start_time'], '$lte': filter['time']['finish_time']}}
-                )
+                {filter['time']['column_name']: {'$gte': filter['time']
+                                                 ['start_time'], '$lte': filter['time']['finish_time']}}
+            )
         elif 'value' in filter:
             records = collection.find(
                 {filter['value']['column_name']: filter['value']['value']}
-                )
+            )
         return records
 
     def get_data(self, database, collection, filter=None):
@@ -107,7 +113,7 @@ class MongoDB:
             return records
         except:
             print("Something went wrong when get the data from the collection.")
-    
+
     def get_data_as_df(self, database, collection, filter=None):
         """ Reads data from database given a collection name.
         If necessary, filter option takes a list of dictionary. add_filter method
@@ -155,13 +161,13 @@ class MongoDB:
             if value["date_type"] == 'hourly':
                 date_format = '%Y-%m-%d %T'
                 filter = {
-                    "$match": {value['column_name']:{'$gte': value['start_time'], '$lte': value['finish_time']}}
+                    "$match": {value['column_name']: {'$gte': value['start_time'], '$lte': value['finish_time']}}
                 }
                 filter_array.append(filter)
             elif value["date_type"] == 'daily':
                 date_format = '%Y-%m-%d 00:00:00'
                 filter = {
-                    "$match": {value['column_name']:{'$gte': value['start_time'], '$lte': value['finish_time']}}
+                    "$match": {value['column_name']: {'$gte': value['start_time'], '$lte': value['finish_time']}}
                 }
                 filter_array.append(filter)
         elif type == 'value':
@@ -175,19 +181,21 @@ class MongoDB:
                 if 'column_name' in i:
                     id["_id"][i['column_name']] = str('$' + i['column_name'])
                 elif 'count' in i:
-                    id["count"] = {str('$' + i['count']) :i['desc']}
+                    id["count"] = {str('$' + i['count']): i['desc']}
             filter = {
-                    "$group": id
-                }
+                "$group": id
+            }
             filter_array.append(filter)
         elif type == 'sort':
             filter = {
-                "$sort": {value['column_name'] : value['desc']}
+                "$sort": {value['column_name']: value['desc']}
             }
             filter_array.append(filter)
         else:
-            print("Something went wrong when build the mongodb query. Please check your input variables.")
+            print(
+                "Something went wrong when build the mongodb query. Please check your input variables.")
         return filter_array
+
 
 class MySQLDB:
 
@@ -221,11 +229,11 @@ class MySQLDB:
                 _config['MYSQL_PORT'],
                 _config['MYSQL_DATABASE'])
 
-            # self.mysql_schema = _config['MYSQL_DATABASE']
             print("MySQL init done.")
         except:
-            print("Something went wrong when configure the initial setup. Please check your input variables.")
-        
+            print(
+                "Something went wrong when configure the initial setup. Please check your input variables.")
+
     def create_mysql_conn(self):
         """ Create database engine to connect mysql database
         Returns:
@@ -237,20 +245,135 @@ class MySQLDB:
         except:
             print("Something went wrong when creating the database engine.")
 
-    def getting_raw_data_query_from_mysql(self, query, conn_mysql):
+    def reading_rawdata(self, query, conn_mysql, table_name):
         """ Reads data from database with mysql query.
         Args:
             query (str): Mysql query
             conn_mysql (engine instance): Mysql engine instance
+            table_name (str): postgredb table name for dataframe
         Returns:
             (Dataframe): A dataframe queried with given parameters.
         """
         try:
-            print("Getting raw data from MySQL...")
+            print("Reading data from {0}...".format(table_name))
             return pd.read_sql_query(text(query), conn_mysql)
+
         except Exception as e:
             print(e.args)
             sys.exit(1)
+
+        finally:
+            conn_mysql.close()
+
+    def writing_rawdata(self, data, conn_mysql, table_name, _index=False):
+        """ Writing rawdata to mysqldb table.
+        Args: 
+            data (DataFrame): DataFrame that be written to mysqldb.
+            conn_mysql (Database instance): Engine instance
+            table_name (str): mysql table name for dataframe
+            _index (boolean): True/False value for adding index to table
+        Returns: None
+        """
+        try:
+            print("Writing data to {0}...".format(table_name))
+            data.to_sql(name=table_name, con=conn_mysql, index=_index)
+        except Exception as e:
+            print(e.args)
+            sys.exit(2)
+
+        finally:
+            conn_mysql.close()
+
+
+class PostgreSQLDB:
+
+    def __init__(self, POSTGRESQL_USERNAME, POSTGRESQL_PASSWORD, POSTGRESQL_HOST, POSTGRESQL_PORT, POSTGRESQL_DATABASE):
+        """ Get the connection configuration for postgresql.
+        Args:
+            POSTGRESQL_USERNAME (str): Database username.
+            POSTGRESQL_PASSWORD (str): Databse password
+            POSTGRESQL_HOST (str): Database host name
+            POSTGRESQL_PORT (str): Database port name
+            POSTGRESQL_DATABASE (str): Database name
+        Returns: None
+        """
+        self.POSTGRESQL_USERNAME = POSTGRESQL_USERNAME
+        self.POSTGRESQL_PASSWORD = POSTGRESQL_PASSWORD
+        self.POSTGRESQL_HOST = POSTGRESQL_HOST
+        self.POSTGRESQL_PORT = POSTGRESQL_PORT
+        self.POSTGRESQL_DATABASE = POSTGRESQL_DATABASE
+
+    def set_postgredb_conn(self):
+        """ Set a connection configuration for postgredb.
+        Args: None
+        Returns: None
+        """
+
+        try:
+            print("Setting postgredb connection parameters...")
+
+            self.postgresql_connection_string = 'postgresql://{0}:{1}@{2}:{3}/{4}'.format(
+                self.POSTGRESQL_USERNAME,
+                self.POSTGRESQL_PASSWORD,
+                self.POSTGRESQL_HOST,
+                self.POSTGRESQL_PORT,
+                self.POSTGRESQL_DATABASE)
+
+        except:
+            print("Something went wrong when setting postgredb connection parameters.")
+
+    def create_postgredb_conn(self):
+        """ Create database engine to connect postgresql database.
+        Args: None
+        Returns:
+            engine (Database instance): Engine instance
+        """
+        try:
+            print("Creating postgredb connection...")
+            engine = create_engine(self.postgresql_connection_string)
+            return engine.connect()
+
+        except:
+            print("Something went wrong when creating postgredb connection.")
+
+    def reading_rawdata(self, query, db_conn, table_name):
+        """ Reading row data from postgredb with sql query.
+        Args: 
+            query (str): Database username
+            db_conn (Database instance): Engine instance
+            table_name (str): postgredb table name for dataframe
+        Returns: data (DataFrame): A dataframe ingested with sql query
+        """
+        try:
+            print("Reading data from {0}...".format(table_name))
+            return pd.read_sql_query(text(query), db_conn)
+
+        except Exception as e:
+            print(e.args)
+            sys.exit(3)
+
+        finally:
+            db_conn.close()
+
+    def writing_rawdata(self, data, db_conn, table_name, _index=False):
+        """ Writing rawdata to postgredb table.
+        Args: 
+            data (DataFrame): DataFrame that be written to postgredb.
+            db_conn (Database instance): Engine instance
+            table_name (str): postgredb table name for dataframe
+            _index (boolean): True/False value for adding index to table
+        Returns: None
+        """
+        try:
+            print("Writing data to {0}...".format(table_name))
+            data.to_sql(name=table_name, con=db_conn, index=_index)
+        except Exception as e:
+            print(e.args)
+            sys.exit(4)
+
+        finally:
+            db_conn.close()
+
 
 class File:
     def __init__(self) -> None:
@@ -263,6 +386,7 @@ class File:
         :return: dataframe
         """
         df = pd.read_csv(file_path)
-        df_ = df[df[filter[0]] == filter[1]].reset_index(drop=True) if filter != None else df
-        
+        df_ = df[df[filter[0]] == filter[1]].reset_index(
+            drop=True) if filter != None else df
+
         return df_
