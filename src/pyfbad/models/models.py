@@ -7,12 +7,11 @@ from sklearn.ensemble import IsolationForest
 
 class Model_IsolationForest:
 
-    def train_model(self, df_model, contamination_value, date_type=''):
+    def train_model( df_model, date_type='', contamination_value = float(0.2)):
         """ Train a Isolation Forest model with given dataframe.
         Args:
-            df_model (Dataframe): Two column dataframe ready to use train model
-            contamination_value (float): threshold to find optimum anomaly number
-            date_type (str): date type of dataset, Hourly or Daily
+            df_model (Dataframe): Two column dataframe ready to use train model 
+            contamination_value (Float): It contains default float value for contamination parameter
         Returns:
             df_model (Dataframe): The results of the training
         """
@@ -21,32 +20,31 @@ class Model_IsolationForest:
         # set timestamp to index
         df_model.set_index('ds', drop=True, inplace=True)
         # resample timeseries to hourly
-        if(date_type == "H"):
+        if(date_type=="H"):
             df_model = df_model.resample('H').sum()
             df_model['hour'] = [i.hour for i in df_model.index]
 
         else:
             df_model = df_model.resample('D').sum()
-        # creates features from date
+        # create features from date
         df_model['day'] = [i.day for i in df_model.index]
-        df_model['month'] = [i.month for i in df_model.index]
+        df_model['month'] =  [i.month for i in df_model.index]
         df_model['year'] = [i.year for i in df_model.index]
         df_model['day_of_year'] = [i.dayofyear for i in df_model.index]
         df_model['week_of_year'] = [i.weekofyear for i in df_model.index]
         df_model['is_weekday'] = [i.isoweekday() for i in df_model.index]
 
-        model = IsolationForest(n_estimators=100, max_samples='auto',
-                                contamination=contamination_value, random_state=41)
-
-        model.fit(df_model[['y', 'day', 'month', 'year',
-                  'day_of_year', 'week_of_year', 'is_weekday']])
-
-        df_model['scores'] = model.decision_function(
-            df_model[['y', 'day', 'month', 'year', 'day_of_year', 'week_of_year', 'is_weekday']])
-
-        df_model['anomaly_score'] = model.predict(
-            df_model[['y', 'day', 'month', 'year', 'day_of_year', 'week_of_year', 'is_weekday']])
-
+        model = IsolationForest(n_estimators=100, max_samples='auto', contamination=contamination_value, random_state=41)
+        
+        if(date_type=="H"):
+            model.fit(df_model[['y', 'day','month','year','hour','day_of_year', 'week_of_year', 'is_weekday']])
+            df_model['scores'] = model.decision_function(df_model[['y', 'day','month','year','hour','day_of_year', 'week_of_year', 'is_weekday']])
+            df_model['anomaly_score'] = model.predict(df_model[['y', 'day','month','year','hour','day_of_year', 'week_of_year', 'is_weekday']])
+            return df_model
+        
+        model.fit(df_model[['y', 'day','month','year','day_of_year', 'week_of_year', 'is_weekday']])
+        df_model['scores'] = model.decision_function(df_model[['y', 'day','month','year','day_of_year', 'week_of_year', 'is_weekday']])
+        df_model['anomaly_score'] = model.predict(df_model[['y', 'day','month','year','day_of_year', 'week_of_year', 'is_weekday']])
         return df_model
 
 
