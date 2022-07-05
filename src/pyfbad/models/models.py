@@ -7,7 +7,7 @@ from sklearn.ensemble import IsolationForest
 
 class Model_IsolationForest:
 
-    def train_model( df_model, date_type='', contamination_value = float(0.2)):
+    def train_model(self, df_model, date_type='', contamination_value = float(0.2)):
         """ Train a Isolation Forest model with given dataframe.
         Args:
             df_model (Dataframe): Two column dataframe ready to use train model 
@@ -45,6 +45,8 @@ class Model_IsolationForest:
         model.fit(df_model[['y', 'day','month','year','day_of_year', 'week_of_year', 'is_weekday']])
         df_model['scores'] = model.decision_function(df_model[['y', 'day','month','year','day_of_year', 'week_of_year', 'is_weekday']])
         df_model['anomaly_score'] = model.predict(df_model[['y', 'day','month','year','day_of_year', 'week_of_year', 'is_weekday']])
+        df_model['anomaly_score'][df_model['anomaly_score'] == 1] = 0
+        df_model['anomaly_score'][df_model['anomaly_score'] == -1] = 1
         return df_model
 
 
@@ -90,7 +92,7 @@ class Model_Prophet:
             forecasted.loc[forecasted['actual'] >
                            forecasted['yhat_upper'], 'anomaly'] = 1
             forecasted.loc[forecasted['actual'] <
-                           forecasted['yhat_lower'], 'anomaly'] = -1
+                           forecasted['yhat_lower'], 'anomaly'] = 1
 
             forecasted['high_anomaly'] = (
                 forecasted['actual'] - forecasted['yhat_upper']) / forecast['actual']
