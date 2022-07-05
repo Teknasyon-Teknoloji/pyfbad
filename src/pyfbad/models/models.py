@@ -1,8 +1,7 @@
 from fbprophet import Prophet
 from sqlalchemy import *
-import pandas as pd
-from datetime import datetime, timedelta
 from sklearn.ensemble import IsolationForest
+import pandas as pd
 
 
 class Model_IsolationForest:
@@ -82,7 +81,7 @@ class Model_Prophet:
         """
         try:
             forecasted = forecast[['ds', 'trend', 'yhat',
-                                   'yhat_lower', 'yhat_upper', 'actual']].copy()
+                                   'yhat_lower', 'yhat_upper', 'actual']]
 
             forecasted['anomaly'] = 0
             forecasted['yhat_upper'] = forecasted['yhat_upper'] * \
@@ -92,47 +91,32 @@ class Model_Prophet:
             forecasted.loc[forecasted['actual'] >
                            forecasted['yhat_upper'], 'anomaly'] = 1
             forecasted.loc[forecasted['actual'] <
-                           forecasted['yhat_lower'], 'anomaly'] = -1
-
-            forecasted['high_anomaly'] = (
-                forecasted['actual'] - forecasted['yhat_upper']) / forecast['actual']
-            forecasted['low_anomaly'] = (
-                forecasted['yhat_lower'] - forecasted['actual']) / forecast['actual']
-            forecasted['importance'] = forecasted.apply(
-                lambda row: row['high_anomaly'] if row['anomaly'] == 1 else (
-                    row['high_anomaly'] + row['low_anomaly']) / 2,
-                axis=1)
-            forecasted['importance'] = forecasted.apply(
-                lambda row: row['low_anomaly'] if row['anomaly'] == -1 else row['importance'], axis=1)
-
+                           forecasted['yhat_lower'], 'anomaly'] = 1
             return forecasted
-
         except:
             print("Something went wrong when predicting anomalies.")
 
-    def get_anomalies(self, model_result, bound_coefficients):
-        """ Tries to predict anomalies based on training results for each coefficients.
+    def get_anomalies(self, model_result, anomaly_number_level):
+        """ Tries to predict anomalies based on number level for each coefficients.
         Args:
             model_result (Dataframe): The results of the training
-            bound_coefficients (list): list of optimization coefficients for anomaly number
+            anomaly_number_level (str): detected total anomaly number, high or low 
         Returns:
             anomaly_table (Dataframe): Anomaly numbers vs coefficients in dataframe
             anomaly_results (dict): Anomalies vs to coefficient values
         """
+        number_of_anomalies = []
+        anomaly_results = {}
+        bound_coefficients = {
+            "High": [1.0, 0.9, 0.8, 0.7, 0.6], "Low": [1.0, 1.1, 1.2, 1.3, 1.4]}
         try:
-            number_of_anomalies = []
-            anomaly_results = {}
-            for coeff in bound_coefficients:
-                forecast_result = self.train_forecast(
-                    model_result, coeff)
-                anomalies = forecast_result[forecast_result.anomaly.isin(
-                    [-1, 1])]
-                number_of_anomalies.append(len(anomalies))
+            for coeff in bound_coefficients[anomaly_number_level]:
+                forecast_result = self.train_forecast(model_result, coeff)
+                anomalies = forecast_result[forecast_result["anomaly"] == 1]
+                number_of_anomalies.append([coeff, len(anomalies)])
                 anomaly_results['{0}_anomaly_result'.format(coeff)] = anomalies
-
-            return pd.DataFrame(list(zip(bound_coefficients, number_of_anomalies)),
+            return pd.DataFrame(number_of_anomalies,
                                 columns=['coeff', 'anomaly_number']), anomaly_results
-
         except:
             print(
                 "Something went wrong when predicting anomalies for each coeffcients.")
@@ -151,7 +135,6 @@ class Model_Prophet:
             best_coeff = anomaly_table[anomaly_table.slope ==
                                        anomaly_table.slope.min()]["coeff"].values[0]
             return results['{0}_anomaly_result'.format(best_coeff)]
-
         except:
             print(
-                "Something went wrong when finding optimumu anomalies.")
+                "Something went wrong when finding optimum anomalies.")

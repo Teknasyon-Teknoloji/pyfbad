@@ -1,6 +1,5 @@
-import logging
-import pandas as pd
 from datetime import datetime, timedelta
+import pandas as pd
 
 
 class Features:
@@ -18,7 +17,8 @@ class Features:
         print("Preparing expected column names and getting model data...")
         try:
             columns = [time_column_name, value_column_name]
-            df_ = df[df[filter[0]] == filter[1]].reset_index(drop=True) if filter != None else df
+            df_ = df[df[filter[0]] == filter[1]].reset_index(
+                drop=True) if filter != None else df
 
             return df_[columns] \
                 .rename(columns={time_column_name: 'ds', value_column_name: 'y'}) \

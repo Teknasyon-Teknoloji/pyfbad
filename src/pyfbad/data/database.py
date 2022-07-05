@@ -1,10 +1,7 @@
-from typing import Collection
 from sqlalchemy import *
 import pandas as pd
-import sys
-from datetime import datetime, timedelta
 import pymongo
-from sshtunnel import SSHTunnelForwarder
+import sys
 
 
 class MongoDB:
@@ -193,181 +190,96 @@ class MongoDB:
                 "Something went wrong when build the mongodb query. Please check your input variables.")
         return filter_array
 
-
-class MySQLDB:
-
-    def __init__(self):
-        print("in init")
-
-    def get_mysql_db(self, MYSQL_USERNAME, MYSQL_PASSWORD, MYSQL_HOST, MYSQL_PORT, MYSQL_DATABASE):
-        """ Set the initial configuration for mysql.
+    def writing_to_db(self, database, transformed, collection):
+        """ Writing detected anomalies to mongodb collections.
         Args:
-            MYSQL_USERNAME (str): Database username.
-            MYSQL_PASSWORD (str): Databse password
-            MYSQL_HOST (str): Database host name
-            MYSQL_PORT (str): Database port name
-            MYSQL_DATABASE (str): Database name
+            database (database) : mongodb database
+            transformed (DataFrame): Contains the data we processed
+            collection (str): Name of the destination collection
+        Returns: None
         """
-        _config = {
-            'MYSQL_USERNAME': MYSQL_USERNAME,
-            'MYSQL_PASSWORD': MYSQL_PASSWORD,
-            'MYSQL_HOST': MYSQL_HOST,
-            'MYSQL_PORT': MYSQL_PORT,
-            'MYSQL_DATABASE': MYSQL_DATABASE
-        }
+        database[collection].insert_many(transformed.to_dict("records"))
 
-        try:
-            print("MySQL init...")
 
-            self.mysql_connection_string = 'mysql+mysqlconnector://{0}:{1}@{2}:{3}/{4}'.format(
-                _config['MYSQL_USERNAME'],
-                _config['MYSQL_PASSWORD'],
-                _config['MYSQL_HOST'],
-                _config['MYSQL_PORT'],
-                _config['MYSQL_DATABASE'])
+class SQLDB:
 
-            print("MySQL init done.")
-        except:
-            print(
-                "Something went wrong when configure the initial setup. Please check your input variables.")
-
-    def create_mysql_conn(self):
-        """ Create database engine to connect mysql database
-        Returns:
-            engine (Database instance): Engine instance
-        """
-        try:
-            engine = create_engine(self.mysql_connection_string)
-            return engine.connect()
-        except:
-            print("Something went wrong when creating the database engine.")
-
-    def reading_rawdata(self, query, conn_mysql, table_name):
-        """ Reads data from database with mysql query.
+    def __init__(self, **kwargs):
+        """ Get the connection configuration for database with kwargs.
         Args:
-            query (str): Mysql query
-            conn_mysql (engine instance): Mysql engine instance
-            table_name (str): postgredb table name for dataframe
-        Returns:
-            (Dataframe): A dataframe queried with given parameters.
-        """
-        try:
-            print("Reading data from {0}...".format(table_name))
-            return pd.read_sql_query(text(query), conn_mysql)
-
-        except Exception as e:
-            print(e.args)
-            sys.exit(1)
-
-        finally:
-            conn_mysql.close()
-
-    def writing_rawdata(self, data, conn_mysql, table_name, _index=False):
-        """ Writing rawdata to mysqldb table.
-        Args: 
-            data (DataFrame): DataFrame that be written to mysqldb.
-            conn_mysql (Database instance): Engine instance
-            table_name (str): mysql table name for dataframe
-            _index (boolean): True/False value for adding index to table
         Returns: None
         """
         try:
-            print("Writing data to {0}...".format(table_name))
-            data.to_sql(name=table_name, con=conn_mysql, index=_index)
-        except Exception as e:
-            print(e.args)
-            sys.exit(2)
+            self.db = kwargs.get('db')
+            self.username = kwargs.get('username')
+            self.password = kwargs.get('password')
+            self.host = kwargs.get('host')
+            self.port = kwargs.get('port')
+            self.database = kwargs.get('database')
+        except:
+            print("Something went wrong when getting configurations with kwargs.")
 
-        finally:
-            conn_mysql.close()
-
-
-class PostgreSQLDB:
-
-    def __init__(self, POSTGRESQL_USERNAME, POSTGRESQL_PASSWORD, POSTGRESQL_HOST, POSTGRESQL_PORT, POSTGRESQL_DATABASE):
-        """ Get the connection configuration for postgresql.
-        Args:
-            POSTGRESQL_USERNAME (str): Database username.
-            POSTGRESQL_PASSWORD (str): Databse password
-            POSTGRESQL_HOST (str): Database host name
-            POSTGRESQL_PORT (str): Database port name
-            POSTGRESQL_DATABASE (str): Database name
-        Returns: None
-        """
-        self.POSTGRESQL_USERNAME = POSTGRESQL_USERNAME
-        self.POSTGRESQL_PASSWORD = POSTGRESQL_PASSWORD
-        self.POSTGRESQL_HOST = POSTGRESQL_HOST
-        self.POSTGRESQL_PORT = POSTGRESQL_PORT
-        self.POSTGRESQL_DATABASE = POSTGRESQL_DATABASE
-
-    def set_postgredb_conn(self):
-        """ Set a connection configuration for postgredb.
+    def set_db_conn(self):
+        """ Set a connection configuration for database.
         Args: None
         Returns: None
         """
-
         try:
-            print("Setting postgredb connection parameters...")
-
-            self.postgresql_connection_string = 'postgresql://{0}:{1}@{2}:{3}/{4}'.format(
-                self.POSTGRESQL_USERNAME,
-                self.POSTGRESQL_PASSWORD,
-                self.POSTGRESQL_HOST,
-                self.POSTGRESQL_PORT,
-                self.POSTGRESQL_DATABASE)
-
+            print("Setting up...")
+            self.connection_string = '{0}://{1}:{2}@{3}:{4}/{5}'.format(
+                self.db,
+                self.username,
+                self.password,
+                self.host,
+                self.port,
+                self.database)
         except:
-            print("Something went wrong when setting postgredb connection parameters.")
+            print("Something went wrong when setting db connection parameters.")
 
-    def create_postgredb_conn(self):
-        """ Create database engine to connect postgresql database.
+    def create_db_conn(self):
+        """ Create database engine to connect database.
         Args: None
         Returns:
             engine (Database instance): Engine instance
         """
         try:
-            print("Creating postgredb connection...")
-            engine = create_engine(self.postgresql_connection_string)
+            print("Creating database connection...")
+            engine = create_engine(self.connection_string)
             return engine.connect()
-
         except:
-            print("Something went wrong when creating postgredb connection.")
+            print("Something went wrong when creating database connection.")
 
     def reading_rawdata(self, query, db_conn, table_name):
-        """ Reading row data from postgredb with sql query.
+        """ Reading row data from db with sql query.
         Args: 
             query (str): Database username
             db_conn (Database instance): Engine instance
-            table_name (str): postgredb table name for dataframe
+            table_name (str): database table name for dataframe
         Returns: data (DataFrame): A dataframe ingested with sql query
         """
         try:
             print("Reading data from {0}...".format(table_name))
             return pd.read_sql_query(text(query), db_conn)
-
         except Exception as e:
             print(e.args)
-            sys.exit(3)
-
+            sys.exit(1)
         finally:
             db_conn.close()
 
-    def writing_rawdata(self, data, db_conn, table_name, _index=False):
-        """ Writing rawdata to postgredb table.
-        Args: 
-            data (DataFrame): DataFrame that be written to postgredb.
+    def writing_to_db(self, data, db_conn, table_name, chunksize=10000):
+        """ Writing detected anomalies to database table.
+        Args:
+            data (DataFrame): DataFrame that be written to database.
             db_conn (Database instance): Engine instance
-            table_name (str): postgredb table name for dataframe
-            _index (boolean): True/False value for adding index to table
+            table_name (str): database table name for dataframe
+            chunksize (integer): number of rows in each batch to be written.
         Returns: None
         """
         try:
             print("Writing data to {0}...".format(table_name))
-            data.to_sql(name=table_name, con=db_conn, index=_index)
+            data.to_sql(name=table_name, con=db_conn, chunksize=chunksize)
         except Exception as e:
             print(e.args)
-            sys.exit(4)
-
+            sys.exit(1)
         finally:
             db_conn.close()
 
