@@ -8,6 +8,7 @@ cython
 numpy
 PyMySQL
 pandas
+plotly
 requests
 SQLAlchemy
 mysql-client
