@@ -3,8 +3,9 @@
 
 # external requirements
 mysql-connector-python
-plotly
 cython
+db-dtypes
+google-cloud-bigquery
 numpy
 PyMySQL
 pandas
@@ -19,4 +20,4 @@ pystan==2.19.1.1
 fbprophet==0.7
 yagmail
 scikit-learn
-requests
+warnings

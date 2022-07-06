@@ -1,8 +1,12 @@
-from fbprophet import Prophet
+from prophet import Prophet
 from sqlalchemy import *
 from sklearn.ensemble import IsolationForest
+from pandas.core.common import SettingWithCopyWarning
 import pandas as pd
+import warnings
 
+warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
+warnings.simplefilter(action="ignore", category=FutureWarning)
 
 class Model_IsolationForest:
 
@@ -36,14 +40,24 @@ class Model_IsolationForest:
         model = IsolationForest(n_estimators=100, max_samples='auto', contamination=contamination_value, random_state=41)
         
         if(date_type=="H"):
-            model.fit(df_model[['y', 'day','month','year','hour','day_of_year', 'week_of_year', 'is_weekday']])
-            df_model['scores'] = model.decision_function(df_model[['y', 'day','month','year','hour','day_of_year', 'week_of_year', 'is_weekday']])
-            df_model['anomaly_score'] = model.predict(df_model[['y', 'day','month','year','hour','day_of_year', 'week_of_year', 'is_weekday']])
+            model.fit(df_model[
+                ['y', 'day','month','year','hour','day_of_year', 'week_of_year', 'is_weekday']
+                ])
+            df_model['scores'] = model.decision_function(df_model[
+                ['y', 'day','month','year','hour','day_of_year', 'week_of_year', 'is_weekday']
+                ])
+            df_model['anomaly_score'] = model.predict(df_model[
+                ['y', 'day','month','year','hour','day_of_year', 'week_of_year', 'is_weekday']
+                ])
             return df_model
         
         model.fit(df_model[['y', 'day','month','year','day_of_year', 'week_of_year', 'is_weekday']])
-        df_model['scores'] = model.decision_function(df_model[['y', 'day','month','year','day_of_year', 'week_of_year', 'is_weekday']])
-        df_model['anomaly_score'] = model.predict(df_model[['y', 'day','month','year','day_of_year', 'week_of_year', 'is_weekday']])
+        df_model['scores'] = model.decision_function(df_model[
+            ['y', 'day','month','year','day_of_year', 'week_of_year', 'is_weekday']
+            ])
+        df_model['anomaly_score'] = model.predict(df_model[
+            ['y', 'day','month','year','day_of_year', 'week_of_year', 'is_weekday']
+            ])
         df_model['anomaly_score'][df_model['anomaly_score'] == 1] = 0
         df_model['anomaly_score'][df_model['anomaly_score'] == -1] = 1
         return df_model
@@ -83,15 +97,13 @@ class Model_Prophet:
             forecasted = forecast[['ds', 'trend', 'yhat',
                                    'yhat_lower', 'yhat_upper', 'actual']]
 
-            forecasted['anomaly'] = 0
             forecasted['yhat_upper'] = forecasted['yhat_upper'] * \
                 bound_coefficient
             forecasted['yhat_lower'] = forecasted['yhat_lower'] / \
                 bound_coefficient
-            forecasted.loc[forecasted['actual'] >
-                           forecasted['yhat_upper'], 'anomaly'] = 1
-            forecasted.loc[forecasted['actual'] <
-                           forecasted['yhat_lower'], 'anomaly'] = 1
+            forecasted['anomaly'] = forecasted.apply(lambda row: 1 if 
+                                                    (row['actual'] < row['yhat_lower']) |
+                                                    (row['actual'] > row['yhat_upper']) else 0, axis=1)
             return forecasted
         except:
             print("Something went wrong when predicting anomalies.")

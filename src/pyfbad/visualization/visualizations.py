@@ -11,7 +11,7 @@ class Anomaly_Visualization:
         Returns:
             It returns a marked time-series line-graph.
         """
-        anomaly_points = df.loc[df['anomaly_score'] == 1]
+        anomaly_points = df[df['anomaly_score'] == 1]
         #Plot the actuals points
         actuals = go.Scatter(name = 'Actuals',
                              x = df.index,
@@ -33,11 +33,5 @@ class Anomaly_Visualization:
                                                    color = "red",
                                                    width = 2)))
         
-        if layout != None:
-            fig = go.Figure(data = [anomalies_map, actuals], layout = layout)
-            
-            return fig.show()
-        
-        fig = go.Figure(data = [anomalies_map, actuals])
-        
+        fig = go.Figure(data = [anomalies_map, actuals], layout = layout)
         return fig.show()

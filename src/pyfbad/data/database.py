@@ -1,4 +1,6 @@
 from sqlalchemy import *
+from google.cloud import bigquery
+from google.oauth2 import service_account
 import pandas as pd
 import pymongo
 import sys
@@ -299,3 +301,58 @@ class File:
             drop=True) if filter != None else df
 
         return df_
+
+
+class CloudDB:
+    def __init__(self, key_path, project_name):
+        """Get the connection configuration for GCP BigQuery.
+        Args:
+            key_path (str): Service account JSON file path
+            project_name (str): Contains BigQuery project name
+        """
+        try:
+            self.key_path = key_path
+            self.project_name = project_name
+            self.credentials = service_account.Credentials.from_service_account_file(
+                self.key_path, scopes=["https://www.googleapis.com/auth/cloud-platform"]
+            )
+            self.bqclient = bigquery.Client(
+                credentials=self.credentials,
+                project=self.credentials.project_id,
+            )
+        except Exception as e:
+            raise Exception(f"Something went wrong {e}")
+
+    def reading_raw_data(self, query_string):
+        """raw data is written
+        Args:
+            query_string (str): It cantains the query
+        Returns: Dataframe
+        """
+        try:
+
+            return self.bqclient.query(query_string).result().to_dataframe()
+
+        except:
+            print("Something went wrong when reading raw data to data frame.")
+
+    def writting_to_bq(self, dataframe, dataset, table_name):
+        """It writes dataframe to bq, If table is exist it adds inside of it, else it
+            creates table first.
+        Args:
+            dataframe (DataFrame): Contains the values we want to write to bq
+            dataset (str): Contains BigQuery dataset name
+            table_name (str): Contains BigQuery table name
+        Returns: If result is succed empty list will return
+        """
+        try:
+            print("Writing data to {0}...".format(table_name))
+            table_id = "{0}.{1}.{2}".format(self.project_name, dataset, table_name)
+
+            job = self.bqclient.load_table_from_dataframe(
+                dataframe, table_id
+            )  
+            return job.result()  
+
+        except Exception as e:
+            raise Exception(f"Something went wrong {e}")
