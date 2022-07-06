@@ -37,27 +37,21 @@ class Model_IsolationForest:
         df_model['week_of_year'] = [i.weekofyear for i in df_model.index]
         df_model['is_weekday'] = [i.isoweekday() for i in df_model.index]
 
-        model = IsolationForest(n_estimators=100, max_samples='auto', contamination=contamination_value, random_state=41)
-        
+        model = IsolationForest(n_estimators=100,
+                                max_samples='auto', 
+                                contamination=contamination_value, 
+                                random_state=41)
+        hourly_columns = ['y', 'day','month','year','hour','day_of_year', 'week_of_year', 'is_weekday']
+        daily_columns= ['y', 'day','month','year','day_of_year', 'week_of_year', 'is_weekday']
         if(date_type=="H"):
-            model.fit(df_model[
-                ['y', 'day','month','year','hour','day_of_year', 'week_of_year', 'is_weekday']
-                ])
-            df_model['scores'] = model.decision_function(df_model[
-                ['y', 'day','month','year','hour','day_of_year', 'week_of_year', 'is_weekday']
-                ])
-            df_model['anomaly_score'] = model.predict(df_model[
-                ['y', 'day','month','year','hour','day_of_year', 'week_of_year', 'is_weekday']
-                ])
+            model.fit(df_model[hourly_columns])
+            df_model['scores'] = model.decision_function(df_model[hourly_columns])
+            df_model['anomaly_score'] = model.predict(df_model[hourly_columns])
             return df_model
         
-        model.fit(df_model[['y', 'day','month','year','day_of_year', 'week_of_year', 'is_weekday']])
-        df_model['scores'] = model.decision_function(df_model[
-            ['y', 'day','month','year','day_of_year', 'week_of_year', 'is_weekday']
-            ])
-        df_model['anomaly_score'] = model.predict(df_model[
-            ['y', 'day','month','year','day_of_year', 'week_of_year', 'is_weekday']
-            ])
+        model.fit(df_model[daily_columns])
+        df_model['scores'] = model.decision_function(df_model[daily_columns])
+        df_model['anomaly_score'] = model.predict(df_model[daily_columns])
         df_model['anomaly_score'][df_model['anomaly_score'] == 1] = 0
         df_model['anomaly_score'][df_model['anomaly_score'] == -1] = 1
         return df_model

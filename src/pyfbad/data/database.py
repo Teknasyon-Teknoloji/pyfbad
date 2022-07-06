@@ -330,20 +330,18 @@ class CloudDB:
         Returns: Dataframe
         """
         try:
-
             return self.bqclient.query(query_string).result().to_dataframe()
-
         except:
             print("Something went wrong when reading raw data to data frame.")
 
-    def writting_to_bq(self, dataframe, dataset, table_name):
+    def writing_to_bq(self, dataframe, dataset, table_name):
         """It writes dataframe to bq, If table is exist it adds inside of it, else it
             creates table first.
         Args:
             dataframe (DataFrame): Contains the values we want to write to bq
             dataset (str): Contains BigQuery dataset name
             table_name (str): Contains BigQuery table name
-        Returns: If result is succed empty list will return
+        Returns: If result is succeeded empty list will return
         """
         try:
             print("Writing data to {0}...".format(table_name))

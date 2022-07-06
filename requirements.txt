@@ -16,8 +16,9 @@ mysql-client
 pyyaml
 pymongo
 sshtunnel
-pystan==2.19.1.1
-fbprophet==0.7
+prophet==1.1
+kaleido
 yagmail
+os
 scikit-learn
 warnings
