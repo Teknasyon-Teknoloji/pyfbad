@@ -4,60 +4,34 @@ from sklearn.ensemble import IsolationForest
 from sklearn.mixture import GaussianMixture
 from pandas.core.common import SettingWithCopyWarning
 import pandas as pd
+import numpy as np
 import warnings
 
 warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
+
 class IsolationForestModel:
 
-    def data_manipulation(self, df_model, date_type=''):
-        """ Creates new columns from 'ds' column
-        Args:
-            df (Dataframe): It contains two columns to use manipulation
-            date_type (str): It decides how data resampling (daily or hourly)
-        Returns:
-            df (Dataframe): Dataframe with increased columns
-        """
-        df_model['ds'] = pd.to_datetime(df_model['ds'])
-
-        # set timestamp to index
-        df_model.set_index('ds', drop=True, inplace=True)
-        # resample timeseries to hourly
-        if(date_type == "H"):
-            df_model = df_model.resample('H').sum()
-            df_model['hour'] = [i.hour for i in df_model.index]
-
-        else:
-            df_model = df_model.resample('D').sum()
-        # create features from date
-        df_model['day'] = [i.day for i in df_model.index]
-        df_model['month'] = [i.month for i in df_model.index]
-        df_model['year'] = [i.year for i in df_model.index]
-        df_model['day_of_year'] = [i.dayofyear for i in df_model.index]
-        df_model['week_of_year'] = [i.weekofyear for i in df_model.index]
-        df_model['is_weekday'] = [i.isoweekday() for i in df_model.index]
-        return df_model
-
-    def train_model(df_model, contamination_value = float(0.2)):
+    def train_model(df_model, contamination_value=float(0.2)):
         """ Train a Isolation Forest model with given dataframe.
         Args:
             df_model (Dataframe): Dataframe ready to use train model 
             contamination_value (Float): It contains default float value for contamination parameter
         Returns:
-            df_model (Dataframe): The results of the training
+            df_model (Dataframe): The results of the anomaly forecasting
         """
         df_columns = df_model.columns
         model = IsolationForest(n_estimators=100,
-                                max_samples='auto', 
-                                contamination=contamination_value, 
+                                max_samples='auto',
+                                contamination=contamination_value,
                                 random_state=41)
         model.fit(df_model[df_columns])
-        df_model['scores'] = model.decision_function(df_model[df_columns])
-        df_model['anomaly_score'] = model.predict(df_model[df_columns])
-        df_model['anomaly_score'][df_model['anomaly_score'] == 1] = 0
-        df_model['anomaly_score'][df_model['anomaly_score'] == -1] = 1
-        return df_model
+        df_model['score'] = model.decision_function(df_model[df_columns])
+        df_model['anomaly'] = model.predict(df_model[df_columns])
+        df_model['anomaly'][df_model['anomaly'] == 1] = 0
+        df_model['anomaly'][df_model['anomaly'] == -1] = 1
+        return df_model[["ds", "y", "score", "anomaly"]]
 
 
 class ProphetModel:
@@ -99,9 +73,9 @@ class ProphetModel:
                 bound_coefficient
             forecasted['anomaly'] = forecasted.apply(lambda row: 1 if (row['actual'] < row['yhat_lower']) | (
                 row['actual'] > row['yhat_upper']) else 0, axis=1)
-            forecasted['anomaly'] = forecasted.apply(lambda row: 1 if 
-                                                    (row['actual'] < row['yhat_lower']) |
-                                                    (row['actual'] > row['yhat_upper']) else 0, axis=1)
+            forecasted['anomaly'] = forecasted.apply(lambda row: 1 if
+                                                     (row['actual'] < row['yhat_lower']) |
+                                                     (row['actual'] > row['yhat_upper']) else 0, axis=1)
             return forecasted
         except Exception:
             raise Exception("Error when predicting anomalies...")
@@ -124,7 +98,8 @@ class ProphetModel:
                 forecast_result = self.train_forecast(model_result, coeff)
                 anomalies = forecast_result[forecast_result["anomaly"] == 1]
                 number_of_anomalies.append([coeff, len(anomalies)])
-                anomaly_results['{0}_anomaly_result'.format(coeff)] = anomalies
+                anomaly_results['{0}_anomaly_result'.format(
+                    coeff)] = forecast_result
             return pd.DataFrame(number_of_anomalies,
                                 columns=['coeff', 'anomaly_number']), anomaly_results
         except Exception:
@@ -144,62 +119,36 @@ class ProphetModel:
                 0.0) / anomaly_table["coeff"].diff().fillna(0.0)).fillna(0.0)
             best_coeff = anomaly_table[anomaly_table.slope ==
                                        anomaly_table.slope.min()]["coeff"].values[0]
-            return results['{0}_anomaly_result'.format(best_coeff)]
+            return results['{0}_anomaly_result'.format(best_coeff)][["ds", "actual", "anomaly"]] \
+            .rename(columns={"actual": "y"})
         except Exception:
             raise Exception("Error when finding optimum anomalies...")
 
 
 class GaussianMixtureModel:
 
-    def train_model(self, df_model, cluster_number, date_type, random_state=7):
+    def train_model(self, df_model, cluster_number, random_state=7):
         """ Train a Gaussian Mixture model with given dataframe.
         Args:
             df_model (Dataframe): dataframe ready to use train model 
             cluster_number (int): number of clusters that used in gmm model
-            date_type (str): data time range type, daily or hourly
             random_state (int): random state value to provide constant results
         Returns:
             df_model (Dataframe): feature extacted dataframe
             gmm model (model): fitted gmm model
         """
         try:
-            df_model['ds'] = pd.to_datetime(df_model['ds'])
-
-            # set timestamp to index
-            df_model.set_index('ds', drop=True, inplace=True)
-
-            if date_type == "H":
-                df_model = df_model.resample('H').sum()
-                df_model['hour'] = [i.hour for i in df_model.index]
-            else:
-                df_model = df_model.resample('D').sum()
-            # create features from date
-            df_model['day'] = [i.day for i in df_model.index]
-            df_model['month'] = [i.month for i in df_model.index]
-            df_model['year'] = [i.year for i in df_model.index]
-            df_model['quarter'] = [i.quarter for i in df_model.index]
-            df_model['week_of_year'] = [i.weekofyear for i in df_model.index]
-            df_model['weekday'] = [i.isoweekday() for i in df_model.index]
-            df_model["is_weekday"] = df_model['weekday'].apply(
-                lambda x: 0 if (x == 6) | (x == 7) else 1)
-
             df_model = df_model.reset_index()
             model = GaussianMixture(
                 n_components=cluster_number, random_state=random_state)
-
-            if date_type == "H":
-                return df_model, model.fit(df_model.drop("ds", axis=1))
-
-            else:
-                return df_model, model.fit(df_model.drop("ds", axis=1))
+            return df_model, model.fit(df_model.drop("ds", axis=1))
         except Exception:
             raise Exception("Error when training gmm model...")
 
-    def get_all_models(self, data, date_type):
+    def get_all_models(self, data):
         """ Train a Gaussian Mixture model with different cluster number values.
         Args:
             data (Dataframe): dataframe ready to use train model 
-            date_type (str): data time range type, daily or hourly
         Returns:
             bic_table (Dataframe): cluster number vs bic value dataframe
             all_models (dict): dictionary that contains all gmm models vs cluster number
@@ -209,7 +158,7 @@ class GaussianMixtureModel:
             all_models = {}
             cluster_numbers = list(np.arange(1, 10))
             for n in cluster_numbers:
-                df, model = self.train_model(data.copy(), n, date_type)
+                df, model = self.train_model(data.copy(), n)
                 bic_values.append(
                     [n, round(model.bic(df.drop("ds", axis=1)), 4)])
                 all_models['{0}_trained_model'.format(n)] = model, df
@@ -231,7 +180,6 @@ class GaussianMixtureModel:
             best_cluster = bic_table[bic_table.BIC ==
                                      bic_table.BIC.min()]["cluster"].values[0]
             return models['{0}_trained_model'.format(best_cluster)]
-
         except Exception:
             raise Exception("Error when finding best gmm model...")
 
