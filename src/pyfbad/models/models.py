@@ -10,13 +10,13 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 
 class Model_IsolationForest:
 
-    def train_model(self, df_model, date_type='', contamination_value = float(0.2)):
-        """ Train a Isolation Forest model with given dataframe.
+    def data_manipulation(self, df_model, date_type=''):
+        """ Creates new columns from 'ds' column
         Args:
-            df_model (Dataframe): Two column dataframe ready to use train model 
-            contamination_value (Float): It contains default float value for contamination parameter
+            df (Dataframe): It contains two columns to use manipulation
+            date_type (str): It decides how data resampling (daily or hourly)
         Returns:
-            df_model (Dataframe): The results of the training
+            df (Dataframe): Dataframe with increased columns
         """
         df_model['ds'] = pd.to_datetime(df_model['ds'])
 
@@ -36,26 +36,27 @@ class Model_IsolationForest:
         df_model['day_of_year'] = [i.dayofyear for i in df_model.index]
         df_model['week_of_year'] = [i.weekofyear for i in df_model.index]
         df_model['is_weekday'] = [i.isoweekday() for i in df_model.index]
+        return df_model
 
+    def train_model(df_model, contamination_value = float(0.2)):
+        """ Train a Isolation Forest model with given dataframe.
+        Args:
+            df_model (Dataframe): Dataframe ready to use train model 
+            contamination_value (Float): It contains default float value for contamination parameter
+        Returns:
+            df_model (Dataframe): The results of the training
+        """
+        df_columns = df_model.columns
         model = IsolationForest(n_estimators=100,
                                 max_samples='auto', 
                                 contamination=contamination_value, 
                                 random_state=41)
-        hourly_columns = ['y', 'day','month','year','hour','day_of_year', 'week_of_year', 'is_weekday']
-        daily_columns= ['y', 'day','month','year','day_of_year', 'week_of_year', 'is_weekday']
-        if(date_type=="H"):
-            model.fit(df_model[hourly_columns])
-            df_model['scores'] = model.decision_function(df_model[hourly_columns])
-            df_model['anomaly_score'] = model.predict(df_model[hourly_columns])
-            return df_model
-        
-        model.fit(df_model[daily_columns])
-        df_model['scores'] = model.decision_function(df_model[daily_columns])
-        df_model['anomaly_score'] = model.predict(df_model[daily_columns])
+        model.fit(df_model[df_columns])
+        df_model['scores'] = model.decision_function(df_model[df_columns])
+        df_model['anomaly_score'] = model.predict(df_model[df_columns])
         df_model['anomaly_score'][df_model['anomaly_score'] == 1] = 0
         df_model['anomaly_score'][df_model['anomaly_score'] == -1] = 1
         return df_model
-
 
 class Model_Prophet:
 
