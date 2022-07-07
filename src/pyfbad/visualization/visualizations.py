@@ -1,8 +1,9 @@
 import plotly.graph_objects as go
+import os
 
 class Anomaly_Visualization:
 
-    def line_graph(self, df, value_column="y",layout=None):
+    def line_graph(self, df, value_column="y", layout=None, save=False):
         """It shows outliers on a time-series line graph as red marks
         Args:
             df (Dataframe): It contains modeled dataframe
@@ -11,7 +12,7 @@ class Anomaly_Visualization:
         Returns:
             It returns a marked time-series line-graph.
         """
-        anomaly_points = df.loc[df['anomaly_score'] == 1]
+        anomaly_points = df[df['anomaly_score'] == 1]
         #Plot the actuals points
         actuals = go.Scatter(name = 'Actuals',
                              x = df.index,
@@ -20,7 +21,6 @@ class Anomaly_Visualization:
                              marker = dict(size=12,
                                          line = dict(width=1),
                                          color = "blue"))
-
         #Highlight the anomaly points
         anomalies_map = go.Scatter(name = "Anomaly",
                                    showlegend = True,
@@ -32,12 +32,9 @@ class Anomaly_Visualization:
                                                line = dict(
                                                    color = "red",
                                                    width = 2)))
-        
-        if layout != None:
-            fig = go.Figure(data = [anomalies_map, actuals], layout = layout)
-            
-            return fig.show()
-        
-        fig = go.Figure(data = [anomalies_map, actuals])
-        
+        fig = go.Figure(data = [anomalies_map, actuals], layout = layout)
+        if save:
+            if not os.path.exists("plots"):
+                os.mkdir("plots")
+            fig.write_image("plots/line_graph.png")
         return fig.show()

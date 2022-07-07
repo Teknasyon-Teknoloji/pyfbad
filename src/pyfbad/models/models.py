@@ -2,19 +2,22 @@ from prophet import Prophet
 from sqlalchemy import *
 from sklearn.ensemble import IsolationForest
 from sklearn.mixture import GaussianMixture
-import numpy as np
+from pandas.core.common import SettingWithCopyWarning
 import pandas as pd
+import warnings
 
+warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
+warnings.simplefilter(action="ignore", category=FutureWarning)
 
 class IsolationForestModel:
 
-    def train_model(self, df_model, date_type='', contamination_value=float(0.2)):
-        """ Train a Isolation Forest model with given dataframe.
+    def data_manipulation(self, df_model, date_type=''):
+        """ Creates new columns from 'ds' column
         Args:
-            df_model (Dataframe): Two column dataframe ready to use train model 
-            contamination_value (Float): It contains default float value for contamination parameter
+            df (Dataframe): It contains two columns to use manipulation
+            date_type (str): It decides how data resampling (daily or hourly)
         Returns:
-            df_model (Dataframe): The results of the training
+            df (Dataframe): Dataframe with increased columns
         """
         df_model['ds'] = pd.to_datetime(df_model['ds'])
 
@@ -34,25 +37,24 @@ class IsolationForestModel:
         df_model['day_of_year'] = [i.dayofyear for i in df_model.index]
         df_model['week_of_year'] = [i.weekofyear for i in df_model.index]
         df_model['is_weekday'] = [i.isoweekday() for i in df_model.index]
+        return df_model
 
-        model = IsolationForest(n_estimators=100, max_samples='auto',
-                                contamination=contamination_value, random_state=41)
-
-        if(date_type == "H"):
-            model.fit(df_model[['y', 'day', 'month', 'year', 'hour',
-                      'day_of_year', 'week_of_year', 'is_weekday']])
-            df_model['scores'] = model.decision_function(
-                df_model[['y', 'day', 'month', 'year', 'hour', 'day_of_year', 'week_of_year', 'is_weekday']])
-            df_model['anomaly_score'] = model.predict(
-                df_model[['y', 'day', 'month', 'year', 'hour', 'day_of_year', 'week_of_year', 'is_weekday']])
-            return df_model
-
-        model.fit(df_model[['y', 'day', 'month', 'year',
-                  'day_of_year', 'week_of_year', 'is_weekday']])
-        df_model['scores'] = model.decision_function(
-            df_model[['y', 'day', 'month', 'year', 'day_of_year', 'week_of_year', 'is_weekday']])
-        df_model['anomaly_score'] = model.predict(
-            df_model[['y', 'day', 'month', 'year', 'day_of_year', 'week_of_year', 'is_weekday']])
+    def train_model(df_model, contamination_value = float(0.2)):
+        """ Train a Isolation Forest model with given dataframe.
+        Args:
+            df_model (Dataframe): Dataframe ready to use train model 
+            contamination_value (Float): It contains default float value for contamination parameter
+        Returns:
+            df_model (Dataframe): The results of the training
+        """
+        df_columns = df_model.columns
+        model = IsolationForest(n_estimators=100,
+                                max_samples='auto', 
+                                contamination=contamination_value, 
+                                random_state=41)
+        model.fit(df_model[df_columns])
+        df_model['scores'] = model.decision_function(df_model[df_columns])
+        df_model['anomaly_score'] = model.predict(df_model[df_columns])
         df_model['anomaly_score'][df_model['anomaly_score'] == 1] = 0
         df_model['anomaly_score'][df_model['anomaly_score'] == -1] = 1
         return df_model
@@ -97,6 +99,9 @@ class ProphetModel:
                 bound_coefficient
             forecasted['anomaly'] = forecasted.apply(lambda row: 1 if (row['actual'] < row['yhat_lower']) | (
                 row['actual'] > row['yhat_upper']) else 0, axis=1)
+            forecasted['anomaly'] = forecasted.apply(lambda row: 1 if 
+                                                    (row['actual'] < row['yhat_lower']) |
+                                                    (row['actual'] > row['yhat_upper']) else 0, axis=1)
             return forecasted
         except Exception:
             raise Exception("Error when predicting anomalies...")

@@ -17,6 +17,8 @@ pyyaml
 pymongo
 sshtunnel
 prophet==1.1
+kaleido
 yagmail
+os
 scikit-learn
 warnings
