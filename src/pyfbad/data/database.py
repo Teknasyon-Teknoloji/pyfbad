@@ -215,8 +215,8 @@ class SQLDB:
             self.host = kwargs.get('host')
             self.port = kwargs.get('port')
             self.database = kwargs.get('database')
-        except:
-            print("Something went wrong when getting configurations with kwargs.")
+        except Exception:
+            raise Exception("Error when getting configurations with kwargs...")
 
     def set_db_conn(self):
         """ Set a connection configuration for database.
@@ -224,7 +224,7 @@ class SQLDB:
         Returns: None
         """
         try:
-            print("Setting up...")
+            print("Setting up database connection parameters...")
             self.connection_string = '{0}://{1}:{2}@{3}:{4}/{5}'.format(
                 self.db,
                 self.username,
@@ -232,8 +232,8 @@ class SQLDB:
                 self.host,
                 self.port,
                 self.database)
-        except:
-            print("Something went wrong when setting db connection parameters.")
+        except Exception:
+            raise Exception("Error when setting db connection parameters...")
 
     def create_db_conn(self):
         """ Create database engine to connect database.
@@ -245,8 +245,8 @@ class SQLDB:
             print("Creating database connection...")
             engine = create_engine(self.connection_string)
             return engine.connect()
-        except:
-            print("Something went wrong when creating database connection.")
+        except Exception:
+            raise Exception("Error when creating database connection...")
 
     def reading_rawdata(self, query, db_conn, table_name):
         """ Reading row data from db with sql query.
@@ -259,27 +259,26 @@ class SQLDB:
         try:
             print("Reading data from {0}...".format(table_name))
             return pd.read_sql_query(text(query), db_conn)
-        except Exception as e:
-            print(e.args)
-            sys.exit(1)
+        except Exception:
+            raise Exception("Error when reading rawdata...")
         finally:
             db_conn.close()
 
-    def writing_to_db(self, data, db_conn, table_name, chunksize=10000):
+    def writing_to_db(self, data, db_conn, table_name, chunksize=10000, if_exists="append"):
         """ Writing detected anomalies to database table.
         Args:
             data (DataFrame): DataFrame that be written to database.
             db_conn (Database instance): Engine instance
             table_name (str): database table name for dataframe
             chunksize (integer): number of rows in each batch to be written.
+            if_exists (str): appending new values to existing db table
         Returns: None
         """
         try:
             print("Writing data to {0}...".format(table_name))
-            data.to_sql(name=table_name, con=db_conn, chunksize=chunksize)
-        except Exception as e:
-            print(e.args)
-            sys.exit(1)
+            data.to_sql(name=table_name, con=db_conn, chunksize=chunksize, if_exists=if_exists)
+        except Exception:
+            raise Exception("Error when writing data to table...")
         finally:
             db_conn.close()
 
@@ -296,6 +295,5 @@ class File:
         """
         df = pd.read_csv(file_path)
         df_ = df[df[filter[0]] == filter[1]].reset_index(
-            drop=True) if filter != None else df
-
+            drop=True) if filter else df
         return df_
