@@ -3,7 +3,7 @@ import os
 
 class Anomaly_Visualization:
 
-    def line_graph(self, df, value_column="y", layout=None, save=False):
+    def line_graph(self, df, value_column="y", layout=None, save=False, path = None):
         """It shows outliers on a time-series line graph as red marks
         Args:
             df (Dataframe): It contains modeled dataframe
@@ -12,7 +12,7 @@ class Anomaly_Visualization:
         Returns:
             It returns a marked time-series line-graph.
         """
-        anomaly_points = df[df['anomaly_score'] == 1]
+        anomaly_points = df[df['anomaly'] == 1]
         #Plot the actuals points
         actuals = go.Scatter(name = 'Actuals',
                              x = df.index,
@@ -34,7 +34,12 @@ class Anomaly_Visualization:
                                                    width = 2)))
         fig = go.Figure(data = [anomalies_map, actuals], layout = layout)
         if save:
-            if not os.path.exists("plots"):
-                os.mkdir("plots")
-            fig.write_image("plots/line_graph.png")
+            if path:
+                if not os.path.exists("{0}/plots".format(path)):
+                    os.mkdir("{0}/plots".format(path))
+                fig.write_image("{0}/plots/line_graph.png".format(path))
+            else:
+                if not os.path.exists("plots"):
+                    os.mkdir("plots")
+                fig.write_image("plots/line_graph.png")
         return fig.show()

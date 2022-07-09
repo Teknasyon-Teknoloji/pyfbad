@@ -13,7 +13,7 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 
 class IsolationForestModel:
 
-    def train_model(df_model, contamination_value=float(0.2)):
+    def train_model(self, df_model, contamination_value=float(0.2)):
         """ Train a Isolation Forest model with given dataframe.
         Args:
             df_model (Dataframe): Dataframe ready to use train model 
@@ -31,7 +31,7 @@ class IsolationForestModel:
         df_model['anomaly'] = model.predict(df_model[df_columns])
         df_model['anomaly'][df_model['anomaly'] == 1] = 0
         df_model['anomaly'][df_model['anomaly'] == -1] = 1
-        return df_model[["ds", "y", "score", "anomaly"]]
+        return df_model[[ "y", "score", "anomaly"]]
 
 
 class ProphetModel:
