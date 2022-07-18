@@ -21,17 +21,20 @@ class IsolationForestModel:
         Returns:
             df_model (Dataframe): The results of the anomaly forecasting
         """
-        df_columns = df_model.columns
-        model = IsolationForest(n_estimators=100,
-                                max_samples='auto',
-                                contamination=contamination_value,
-                                random_state=41)
-        model.fit(df_model[df_columns])
-        df_model['score'] = model.decision_function(df_model[df_columns])
-        df_model['anomaly'] = model.predict(df_model[df_columns])
-        df_model['anomaly'][df_model['anomaly'] == 1] = 0
-        df_model['anomaly'][df_model['anomaly'] == -1] = 1
-        return df_model[[ "y", "score", "anomaly"]]
+        try:
+            df_columns = df_model.columns
+            model = IsolationForest(n_estimators=100,
+                                    max_samples='auto',
+                                    contamination=contamination_value,
+                                    random_state=41)
+            model.fit(df_model[df_columns])
+            df_model['score'] = model.decision_function(df_model[df_columns])
+            df_model['anomaly'] = model.predict(df_model[df_columns])
+            df_model['anomaly'][df_model['anomaly'] == 1] = 0
+            df_model['anomaly'][df_model['anomaly'] == -1] = 1
+            return df_model.reset_index()[["ds", "y", "score", "anomaly"]]
+        except Exception:
+            raise Exception("Error when the IF model training...")
 
 
 class ProphetModel:
@@ -120,7 +123,7 @@ class ProphetModel:
             best_coeff = anomaly_table[anomaly_table.slope ==
                                        anomaly_table.slope.min()]["coeff"].values[0]
             return results['{0}_anomaly_result'.format(best_coeff)][["ds", "actual", "anomaly"]] \
-            .rename(columns={"actual": "y"})
+                .rename(columns={"actual": "y"})
         except Exception:
             raise Exception("Error when finding optimum anomalies...")
 

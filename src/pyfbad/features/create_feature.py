@@ -27,18 +27,38 @@ class Features:
             raise Exception(
                 "Error when cleaning dataframe to extract features...")
 
-    def extract_features(self, df_model, date_type, model_name):
+    def extract_time_features(self, df_):
         """ Create extra features from date value in dataframe.
         Args:
-            df_model (Dataframe): dataframe ready to use train model 
-            date_type (str): data time range type, daily or hourly   
+            df_ (Dataframe): A dataframe contains a bunch of column
+        Returns:
+            df_ (Dataframe): A dataframe that contains extra time features
+        """
+        try:
+            # create features from date
+            df_['day'] = [i.day for i in df_.index]
+            df_['month'] = [i.month for i in df_.index]
+            df_['quarter'] = [i.quarter for i in df_.index]
+            df_['year'] = [i.year for i in df_.index]
+            df_['day_of_year'] = [i.dayofyear for i in df_.index]
+            df_['week_of_year'] = [i.weekofyear for i in df_.index]
+            df_['weekday'] = [i.isoweekday() for i in df_.index]
+            df_["is_weekday"] = df_['weekday'].apply(
+                lambda x: 0 if (x == 6) | (x == 7) else 1)
+            return df_
+        except Exception:
+            raise Exception("Error when extracting feature from dataframe...")
+
+    def get_modeling_data(self, df_model, model_name, date_type="D"):
+        """ Returns a dataframe with extracted time features for modeling.
+        Args:
+            df_model (Dataframe): dataframe ready to use train model    
             model_name (str): name of the model, IF or GMM  
+            date_type (str): data time range type, daily or hourly
         Returns:
             df_model (Dataframe): feature extacted dataframe
         """
         try:
-            df_model['ds'] = pd.to_datetime(df_model['ds'])
-
             # set timestamp to index
             df_model.set_index('ds', drop=True, inplace=True)
 
@@ -48,19 +68,14 @@ class Features:
             else:
                 df_model = df_model.resample('D').sum()
 
-            # create features from date
-            df_model['day'] = [i.day for i in df_model.index]
-            df_model['month'] = [i.month for i in df_model.index]
-            df_model['year'] = [i.year for i in df_model.index]
-            df_model['week_of_year'] = [i.weekofyear for i in df_model.index]
-            df_model['weekday'] = [i.isoweekday() for i in df_model.index]
+            df_model = self.extract_time_features(df_model)
 
             if model_name == "IF":
-                df_model['day_of_year'] = [i.dayofyear for i in df_model.index]
+                return df_model.drop(['quarter', 'is_weekday'], axis=1)
             elif model_name == "GMM":
-                df_model['quarter'] = [i.quarter for i in df_model.index]
-                df_model["is_weekday"] = df_model['weekday'].apply(
-                    lambda x: 0 if (x == 6) | (x == 7) else 1)
-            return df_model
+                return df_model.drop(['day_of_year'], axis=1)
+            else:
+                return df_model
         except Exception:
-            raise Exception("Error when extracting feature from dataframe...")
+            raise Exception(
+                "Error when getting dataframe ready for modeling...")

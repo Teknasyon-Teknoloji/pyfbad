@@ -277,7 +277,8 @@ class SQLDB:
         """
         try:
             print("Writing data to {0}...".format(table_name))
-            data.to_sql(name=table_name, con=db_conn, chunksize=chunksize, if_exists=if_exists)
+            data.to_sql(name=table_name, con=db_conn,
+                        chunksize=chunksize, if_exists=if_exists)
         except Exception:
             raise Exception("Error when writing data to table...")
         finally:
@@ -288,15 +289,19 @@ class File:
     def __init__(self) -> None:
         pass
 
-    def read_from_csv(self, file_path, filter=None):
-        """
-        :param file_path: string
-        :param filter: array [column_name,value]
-        :return: dataframe
+    def read_from_csv(self, time_column_name, file_path, filter=None):
+        """ Reads data from csv file.
+        Args:
+            time_column_name (str): name of the time column in dataset
+            file_path (str): file path of csv file
+            filter (array): column_name,value
+        Returns:
+            df_ (dataframe): read dataframe
         """
         df = pd.read_csv(file_path)
         df_ = df[df[filter[0]] == filter[1]].reset_index(
             drop=True) if filter else df
+        df_[time_column_name] = pd.to_datetime(df_[time_column_name])
         return df_
 
 
@@ -311,7 +316,8 @@ class CloudDB:
             self.key_path = key_path
             self.project_name = project_name
             self.credentials = service_account.Credentials.from_service_account_file(
-                self.key_path, scopes=["https://www.googleapis.com/auth/cloud-platform"]
+                self.key_path, scopes=[
+                    "https://www.googleapis.com/auth/cloud-platform"]
             )
             self.bqclient = bigquery.Client(
                 credentials=self.credentials,
@@ -342,12 +348,13 @@ class CloudDB:
         """
         try:
             print("Writing data to {0}...".format(table_name))
-            table_id = "{0}.{1}.{2}".format(self.project_name, dataset, table_name)
+            table_id = "{0}.{1}.{2}".format(
+                self.project_name, dataset, table_name)
 
             job = self.bqclient.load_table_from_dataframe(
                 dataframe, table_id
-            )  
-            return job.result()  
+            )
+            return job.result()
 
         except Exception as e:
             raise Exception(f"Something went wrong {e}")
