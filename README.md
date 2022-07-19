@@ -40,12 +40,28 @@ Python 2 is no longer supported. Make sure Python3+ is used as the programming l
         collection=collections[0],
         filter=filter
     )
+**Database Operations - Read From File**:
+
+    from pyfbad.data import database as db
+    conn=db.File()
+    df=conn.read_from_csv(time_column_name="timestamp", file_path="Twitter_volume_AMZN.csv")
+
+**Database Operations - Read From BigQuery**:
+
+    # connet to BigQuery
+    from pyfbad.data import database as db
+    conn=db.CloudDB(key_path, project_name)
+    df=conn.reading_raw_data(query_string)
+
+    # After training a model
+    writing_to_bq(dataframe, dataset, table_name)
 
 **Feature Operations**:
 
     from pyfbad.features import create_feature as cf
     cf_obj = cf.Features()
-    df_model = cf_obj.get_model_data(df=df, time_column_name="_id.datetime", value_column_name="_id.count", filter=['_id.country','TR'])
+    df_transform = cf_obj.transform_data(df=df, time_column_name="_id.datetime", value_column_name="_id.count", filter=['_id.country','TR'])
+    df_model.get_modeling_data(df=df_transform, model_name="IF", date_type='D')
 
 **Model Operations**:
 
@@ -53,6 +69,11 @@ Python 2 is no longer supported. Make sure Python3+ is used as the programming l
     models=md.Model_Prophet()
     model_result = models.train_model(df_model)
     anomaly_result = models.train_forecast(model_result)
+
+**Visualizations Operations**:
+    from pyfbad.visualization import visualizations as vis
+    av = vis.Anomaly_Visualization()
+    av.line_graph( df_model, value_column="y", layout=None, save=True, path = None)
 
 **Notification Operations**:
 
