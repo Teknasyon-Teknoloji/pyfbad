@@ -3,7 +3,7 @@ import pandas as pd
 
 class Features:
 
-    def get_model_data(self, df, time_column_name, value_column_name, filter=None):
+    def transform_data(self, df, time_column_name, value_column_name, filter=None):
         """ Returns a two column dataframe ready to use train model.
         Args:
             df (Dataframe): A data frame contains a bunch of column

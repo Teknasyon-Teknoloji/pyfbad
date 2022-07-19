@@ -2,13 +2,8 @@ from prophet import Prophet
 from sqlalchemy import *
 from sklearn.ensemble import IsolationForest
 from sklearn.mixture import GaussianMixture
-from pandas.core.common import SettingWithCopyWarning
 import pandas as pd
 import numpy as np
-import warnings
-
-warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
-warnings.simplefilter(action="ignore", category=FutureWarning)
 
 
 class IsolationForestModel:
