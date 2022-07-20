@@ -2,17 +2,18 @@ from prophet import Prophet
 from sqlalchemy import *
 from sklearn.ensemble import IsolationForest
 from sklearn.mixture import GaussianMixture
-import pandas as pd
+from sklearn.neighbors import LocalOutlierFactor
 import numpy as np
+import pandas as pd
 
 
 class IsolationForestModel:
 
-    def train_model(self, df_model, contamination_value=float(0.2)):
-        """ Train a Isolation Forest model with given dataframe.
+    def train_model(self, df_model, contamination_value=float(0.06)):
+        """ Train a Isolation Forest model and make prediction with given dataframe.
         Args:
             df_model (Dataframe): Dataframe ready to use train model 
-            contamination_value (Float): It contains default float value for contamination parameter
+            contamination_value (float): It contains default float value for contamination parameter
         Returns:
             df_model (Dataframe): The results of the anomaly forecasting
         """
@@ -29,7 +30,33 @@ class IsolationForestModel:
             df_model['anomaly'][df_model['anomaly'] == -1] = 1
             return df_model.reset_index()[["ds", "y", "score", "anomaly"]]
         except Exception:
-            raise Exception("Error when the IF model training...")
+            raise Exception(
+                "Error when the IF model training and prediction...")
+
+
+class LocalOutlierFactorModel:
+
+    def train_model(self, df_model, contamination_value=float(0.06)):
+        """ Train a Local Outlier Factor model and make prediction with given dataframe.
+        Args:
+            df_model (Dataframe): Dataframe ready to use train model 
+            contamination_value (float): It contains default float value for contamination parameter
+        Returns:
+            df_model (Dataframe): The results of the anomaly forecasting
+        """
+        try:
+            df_model = df_model.reset_index()
+            # building model object
+            model = LocalOutlierFactor(contamination=contamination_value)
+            # model fitting and prediction
+            df_model["anomaly"] = model.fit_predict(
+                df_model.drop(["ds"], axis=1))
+            df_model['anomaly'][df_model['anomaly'] == 1] = 0
+            df_model['anomaly'][df_model['anomaly'] == -1] = 1
+            return df_model[["ds", "y", "anomaly"]]
+        except Exception:
+            raise Exception(
+                "Error when the LOF model training and prediction...")
 
 
 class ProphetModel:
