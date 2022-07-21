@@ -13,9 +13,9 @@ Python 2 is no longer supported. Make sure Python3+ is used as the programming l
     pip install pyfbad            # normal install
     pip install --upgrade pyfbad  # or update if needed
 
-**Database operations**:
+**Database Operations - Read From MongoDB**:
 
-    # connet to mongodb
+    # connect to mongodb
     from pyfbad.data import database as db
     database_obj = db.MongoDB('db_name', PORT, 'db_path')
     database = database_obj.get_mongo_db()
@@ -23,7 +23,7 @@ Python 2 is no longer supported. Make sure Python3+ is used as the programming l
     # check the collections
     collections = dataset_obj.get_collection_names(database)
 
-    # buil mongodb query
+    # build mongodb query
     filter = dataset_obj.add_filter(
     [],
     'time',
@@ -48,7 +48,7 @@ Python 2 is no longer supported. Make sure Python3+ is used as the programming l
 
 **Database Operations - Read From BigQuery**:
 
-    # connet to BigQuery
+    # connect to BigQuery
     from pyfbad.data import database as db
     conn=db.CloudDB(key_path, project_name)
     df=conn.reading_raw_data(query_string)
@@ -56,24 +56,68 @@ Python 2 is no longer supported. Make sure Python3+ is used as the programming l
     # After training a model
     writing_to_bq(dataframe, dataset, table_name)
 
+**Database Operations - Read From SQLDB**:
+
+    # connect to SQL database
+    from pyfbad.data import database as db
+    parameters = {"db": "postgresql", "username": "postgres",
+              "password": "mypassword", "host": '127.0.0.1', "port": 5444, "database": "test"}
+    conn=db.SQLDB(**parameters)
+    conn.set_db_conn()
+    query = 'SELECT * FROM {0}'.format(table_name)
+    data = conn.reading_rawdata(query, conn.create_db_conn(), table_name)
+
+    # After training a model
+    obj.writing_to_db(data, obj.create_db_conn(), table_name)
+
 **Feature Operations**:
 
     from pyfbad.features import create_feature as cf
     cf_obj = cf.Features()
-    df_transform = cf_obj.transform_data(df=df, time_column_name="_id.datetime", value_column_name="_id.count", filter=['_id.country','TR'])
-    df_model.get_modeling_data(df=df_transform, model_name="IF", date_type='D')
+    df_transform = cf_obj.transform_data(df=df_, time_column_name="count_datetime", 
+                    value_column_name="count", filter=['_id.country','TR'])
 
-**Model Operations**:
+    df_model = cf_obj.get_modeling_data(df=df_transform, model_name="IF", date_type='D')
+
+**Model Operations - ProphetModel**:
 
     from pyfbad.models import models as md
-    models=md.Model_Prophet()
-    model_result = models.train_model(df_model)
-    anomaly_result = models.train_forecast(model_result)
+    model_obj = md.Model_Prophet()
+    # detect anomalies for all coefficients
+    table, results = model_obj.get_anomalies(model_result = model_obj.train_model(df_model), anomaly_number_level = "Low")
+    # find optimum anomalies for best result
+    anomalies = model_obj.find_optimum_anomalies(anomaly_table = table, results = results)
+
+**Model Operations - IsolationForestModel**:
+
+    from pyfbad.models import models as md
+    model_obj = md.IsolationForestModel()
+    # train IF model and detect anomalies by forecasting
+    anomalies = model_obj.train_model(df_model = df_model, contamination_value=float(0.06))
+
+**Model Operations - GaussianMixtureModel**:
+
+    from pyfbad.models import models as md
+    model_obj = md.GaussianMixtureModel()
+    # train GMM models for all cluster numbers
+    table, results = model_obj.get_all_models(data = df_model)
+    # finds best GMM model and its data according to BIC values
+    best_model, modeled_data = model_obj.find_best_model(bic_table = table, models = results)
+    # detecting anomalies using best GMM model
+    anomalies = model_obj.train_forecast(gmm_model = best_model, model_data = modeled_data, anomaly_percent = 6)
+
+**Model Operations - LocalOutlierFactorModel**:
+
+    from pyfbad.models import models as md
+    model_obj = md.LocalOutlierFactorModel()
+    # train LOF model and detect anomalies by forecasting
+    anomalies = model_obj.train_model(df_model = df_model, contamination_value=float(0.06))
 
 **Visualizations Operations**:
+
     from pyfbad.visualization import visualizations as vis
     av = vis.Anomaly_Visualization()
-    av.line_graph( df_model, value_column="y", layout=None, save=True, path = None)
+    av.line_graph(df_model, algorithm = "IF", time_column="ds", value_column="y", layout=None, save=True, path = None)
 
 **Notification Operations**:
 
@@ -120,7 +164,7 @@ Project Organization
     │   └── pyfbad
     │      ├── __init__.py    <- Makes pyfbad a Python module
     │      │
-    │      ├── data           <- Scripts to read raw data
+    │      ├── data           <- Scripts to read raw data from different sources
     │      │   └── database.py
     │      │   └── __init__.py
     │      │
@@ -129,13 +173,16 @@ Project Organization
     │      │   └── __init__.py
     │      │
     │      ├── models         <- Scripts to train models and then use trained models to make
-    │      │   │                 predictions
+    │      │   │                 predictions for anomaly detection
     │      │   └── models.py
     │      │   └── __init__.py
     │      │
-    │      └── notification  <- Scripts for setting up notification systems.
-    │          └── notification.py
+    │      │── notification  <- Scripts for setting up notification systems.
+    │      │    └── notification.py
+    │      │    └── __init__.py
+    │      │
+    │      └── visualization  <- Scripts for visualizing of detected anomalies
+    │          └── visualizations.py
     │          └── __init__.py
     │
     └── tox.ini            <- tox file with settings for running tox; see tox.readthedocs.io
-

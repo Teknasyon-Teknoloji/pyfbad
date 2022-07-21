@@ -45,15 +45,13 @@ class LocalOutlierFactorModel:
             df_model (Dataframe): The results of the anomaly forecasting
         """
         try:
-            df_model = df_model.reset_index()
             # building model object
             model = LocalOutlierFactor(contamination=contamination_value)
             # model fitting and prediction
-            df_model["anomaly"] = model.fit_predict(
-                df_model.drop(["ds"], axis=1))
+            df_model["anomaly"] = model.fit_predict(df_model)
             df_model['anomaly'][df_model['anomaly'] == 1] = 0
             df_model['anomaly'][df_model['anomaly'] == -1] = 1
-            return df_model[["ds", "y", "anomaly"]]
+            return df_model.reset_index()[["ds", "y", "anomaly"]]
         except Exception:
             raise Exception(
                 "Error when the LOF model training and prediction...")
