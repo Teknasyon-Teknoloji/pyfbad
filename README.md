@@ -4,7 +4,7 @@ pyfbad
 The pyfbad library supports anomaly detection projects. An end-to-end anomaly detection application can be written using the source codes of this library only.
 
 Given below is a basic application. Each module has more alternatives as follows;
-• Database module -> Relational databases (PostgresSQL,MySQL, etc.), NoSQL(MongoDB) database or Cloud (BigQuery)
+• Database module -> Relational databases-(PostgreSQL,MySQL, etc.), NoSQL-(MongoDB) database or Cloud-(BigQuery)
 • Models module   -> IsolationForest, LocalOutlierFactor, Prophet, GaussianMixtureModel
 • Notification module -> Slack
 
