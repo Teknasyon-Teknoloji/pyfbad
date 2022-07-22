@@ -256,7 +256,7 @@ class SQLDB:
         """
         try:
             print("Reading data from {0}...".format(table_name))
-            return pd.read_sql_query(text(query), db_conn)
+            return pd.read_sql_query(query, db_conn)
         except Exception:
             raise Exception("Error when reading rawdata...")
         finally:
@@ -362,3 +362,17 @@ class File:
         except Exception:
             raise Exception(
                 "Something went wrong when reading raw data from csv file...")
+
+    def writing_to_csv(self, data, file_path, index=False):
+        """ Writes data to csv file.
+        Args:
+            data (DataFrame): dataframe that will be written to csv
+            file_path (str): csv file path of dataframe to write
+            index (boolean): booelan value of whether add or not index to csv
+        Returns: None
+        """
+        try:
+            print("Writing data to csv...")
+            data.to_csv(file_path, index=index)
+        except Exception:
+            raise Exception("Error when writing data to csv...")
