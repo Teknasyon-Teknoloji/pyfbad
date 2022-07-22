@@ -3,9 +3,7 @@ pyfbad
 
 **Deployment & Documentation**
 
-.. image:: https://img.shields.io/badge/pypi-v0.2.0-brightgreen
-   :target: https://pypi.org/project/pyfbad/
-   :alt: PyPI version
+[<img alt="" src = "https://img.shields.io/badge/pypi-v0.2.0-brightgreen">](https://pypi.org/project/pyfbad/)
 
 -----
 
