@@ -18,11 +18,9 @@ class Features:
             columns = [time_column_name, value_column_name]
             df_ = df[df[filter[0]] == filter[1]].reset_index(
                 drop=True) if filter != None else df
-
             return df_[columns] \
                 .rename(columns={time_column_name: 'ds', value_column_name: 'y'}) \
-                .sort_values('ds', ascending=True) \
-                .reset_index()
+                .sort_values('ds', ascending=True)
         except Exception:
             raise Exception(
                 "Error when cleaning dataframe to extract features...")
@@ -60,7 +58,7 @@ class Features:
         """
         try:
             # set timestamp to index
-            df_model.set_index('ds', drop=True, inplace=True)
+            df_model.set_index('ds', inplace=True)
 
             if date_type == "H":
                 df_model = df_model.resample('H').sum()
@@ -76,6 +74,8 @@ class Features:
                 return df_model.drop(['day_of_year'], axis=1)
             elif model_name == "Prophet":
                 return df_model.reset_index()[["ds", "y"]]
+            else:
+                return df_model
         except Exception:
             raise Exception(
                 "Error when getting dataframe ready for modeling...")
