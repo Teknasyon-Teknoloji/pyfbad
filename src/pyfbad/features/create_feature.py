@@ -74,8 +74,8 @@ class Features:
                 return df_model.drop(['quarter', 'is_weekday'], axis=1)
             elif model_name == "GMM":
                 return df_model.drop(['day_of_year'], axis=1)
-            else:
-                return df_model
+            elif model_name == "Prophet":
+                return df_model.reset_index()[["ds", "y"]]
         except Exception:
             raise Exception(
                 "Error when getting dataframe ready for modeling...")
