@@ -1,14 +1,13 @@
-from typing import Collection
 from sqlalchemy import *
+from google.cloud import bigquery
+from google.oauth2 import service_account
 import pandas as pd
-import sys
-from datetime import datetime, timedelta
 import pymongo
-from sshtunnel import SSHTunnelForwarder
 
 
 class MongoDB:
-    def __init__(self, db_name, db_port, db_path): 
+
+    def __init__(self, db_name, db_port, db_path):
         """ To initialize the mongodb connection.
         Args:
             db_name (str): Database name ex. myMongoDB
@@ -18,27 +17,27 @@ class MongoDB:
         self._db_name = db_name
         self._db_port = db_port
         self._db_path = db_path
-        
+
     def get_mongo_db(self):
         """ Builds client and database objects to be read from.
         Returns:
             database (MongoClient): Database client object to read from
         """
         _config = {
-            'db_name' : self._db_name,
-            'db_path' : self._db_path,
-            'db_port' : self._db_port,
+            'db_name': self._db_name,
+            'db_path': self._db_path,
+            'db_port': self._db_port,
         }
         try:
             print("mongo init...")
-            client = pymongo.MongoClient(_config['db_path'],_config['db_port'])
+            client = pymongo.MongoClient(
+                _config['db_path'], _config['db_port'])
             database = client[_config['db_name']]
             print("mongo init done")
-
             return database
         except:
             print("Something went wrong when build the MongoDB client.")
-        
+
     def get_collection_names(self, database):
         """ Returns the collection names from given database.
         Args:
@@ -51,7 +50,6 @@ class MongoDB:
             collections = database.list_collection_names()
         except:
             print("Something went wrong when get the list of collection names.")
-
         return collections
 
     def get_data_from_one_collection(self, database, collection, filter=None):
@@ -73,17 +71,19 @@ class MongoDB:
             records = collection.find()
         elif 'time' and 'value' in filter:
             records = collection.find(
-                {filter['time']['column_name']:{'$gte': filter['time']['start_time'], '$lte': filter['time']['finish_time']}},
+                {filter['time']['column_name']: {'$gte': filter['time']
+                                                 ['start_time'], '$lte': filter['time']['finish_time']}},
                 {filter['value']['column_name']: filter['value']['value']}
-                )
+            )
         elif 'time' in filter:
             records = collection.find(
-                {filter['time']['column_name']:{'$gte': filter['time']['start_time'], '$lte': filter['time']['finish_time']}}
-                )
+                {filter['time']['column_name']: {'$gte': filter['time']
+                                                 ['start_time'], '$lte': filter['time']['finish_time']}}
+            )
         elif 'value' in filter:
             records = collection.find(
                 {filter['value']['column_name']: filter['value']['value']}
-                )
+            )
         return records
 
     def get_data(self, database, collection, filter=None):
@@ -107,7 +107,7 @@ class MongoDB:
             return records
         except:
             print("Something went wrong when get the data from the collection.")
-    
+
     def get_data_as_df(self, database, collection, filter=None):
         """ Reads data from database given a collection name.
         If necessary, filter option takes a list of dictionary. add_filter method
@@ -125,9 +125,7 @@ class MongoDB:
                 data = collection.find()
             else:
                 data = collection.aggregate(filter)
-
             records = pd.json_normalize(list(data))
-
             return records
         except:
             print("Something went wrong when get the dataframe from the collection.")
@@ -155,13 +153,13 @@ class MongoDB:
             if value["date_type"] == 'hourly':
                 date_format = '%Y-%m-%d %T'
                 filter = {
-                    "$match": {value['column_name']:{'$gte': value['start_time'], '$lte': value['finish_time']}}
+                    "$match": {value['column_name']: {'$gte': value['start_time'], '$lte': value['finish_time']}}
                 }
                 filter_array.append(filter)
             elif value["date_type"] == 'daily':
                 date_format = '%Y-%m-%d 00:00:00'
                 filter = {
-                    "$match": {value['column_name']:{'$gte': value['start_time'], '$lte': value['finish_time']}}
+                    "$match": {value['column_name']: {'$gte': value['start_time'], '$lte': value['finish_time']}}
                 }
                 filter_array.append(filter)
         elif type == 'value':
@@ -175,94 +173,206 @@ class MongoDB:
                 if 'column_name' in i:
                     id["_id"][i['column_name']] = str('$' + i['column_name'])
                 elif 'count' in i:
-                    id["count"] = {str('$' + i['count']) :i['desc']}
+                    id["count"] = {str('$' + i['count']): i['desc']}
             filter = {
-                    "$group": id
-                }
+                "$group": id
+            }
             filter_array.append(filter)
         elif type == 'sort':
             filter = {
-                "$sort": {value['column_name'] : value['desc']}
+                "$sort": {value['column_name']: value['desc']}
             }
             filter_array.append(filter)
         else:
-            print("Something went wrong when build the mongodb query. Please check your input variables.")
+            print(
+                "Something went wrong when build the mongodb query. Please check your input variables.")
         return filter_array
 
-class MySQLDB:
-
-    def __init__(self):
-        print("in init")
-
-    def get_mysql_db(self, MYSQL_USERNAME, MYSQL_PASSWORD, MYSQL_HOST, MYSQL_PORT, MYSQL_DATABASE):
-        """ Set the initial configuration for mysql.
+    def writing_to_db(self, database, transformed, collection):
+        """ Writing detected anomalies to mongodb collections.
         Args:
-            MYSQL_USERNAME (str): Database username.
-            MYSQL_PASSWORD (str): Databse password
-            MYSQL_HOST (str): Database host name
-            MYSQL_PORT (str): Database port name
-            MYSQL_DATABASE (str): Database name
+            database (database) : mongodb database
+            transformed (DataFrame): Contains the data we processed
+            collection (str): Name of the destination collection
+        Returns: None
         """
-        _config = {
-            'MYSQL_USERNAME': MYSQL_USERNAME,
-            'MYSQL_PASSWORD': MYSQL_PASSWORD,
-            'MYSQL_HOST': MYSQL_HOST,
-            'MYSQL_PORT': MYSQL_PORT,
-            'MYSQL_DATABASE': MYSQL_DATABASE
-        }
+        database[collection].insert_many(transformed.to_dict("records"))
 
+
+class SQLDB:
+
+    def __init__(self, **kwargs):
+        """ Get the connection configuration for database with kwargs.
+        Args:
+        Returns: None
+        """
         try:
-            print("MySQL init...")
+            self.db = kwargs.get('db')
+            self.username = kwargs.get('username')
+            self.password = kwargs.get('password')
+            self.host = kwargs.get('host')
+            self.port = kwargs.get('port')
+            self.database = kwargs.get('database')
+        except Exception:
+            raise Exception("Error when getting configurations with kwargs...")
 
-            self.mysql_connection_string = 'mysql+mysqlconnector://{0}:{1}@{2}:{3}/{4}'.format(
-                _config['MYSQL_USERNAME'],
-                _config['MYSQL_PASSWORD'],
-                _config['MYSQL_HOST'],
-                _config['MYSQL_PORT'],
-                _config['MYSQL_DATABASE'])
+    def set_db_conn(self):
+        """ Set a connection configuration for database.
+        Args: None
+        Returns: None
+        """
+        try:
+            print("Setting up database connection parameters...")
+            self.connection_string = '{0}://{1}:{2}@{3}:{4}/{5}'.format(
+                self.db,
+                self.username,
+                self.password,
+                self.host,
+                self.port,
+                self.database)
+        except Exception:
+            raise Exception("Error when setting db connection parameters...")
 
-            # self.mysql_schema = _config['MYSQL_DATABASE']
-            print("MySQL init done.")
-        except:
-            print("Something went wrong when configure the initial setup. Please check your input variables.")
-        
-    def create_mysql_conn(self):
-        """ Create database engine to connect mysql database
+    def create_db_conn(self):
+        """ Create database engine to connect database.
+        Args: None
         Returns:
             engine (Database instance): Engine instance
         """
         try:
-            engine = create_engine(self.mysql_connection_string)
+            print("Creating database connection...")
+            engine = create_engine(self.connection_string)
             return engine.connect()
-        except:
-            print("Something went wrong when creating the database engine.")
+        except Exception:
+            raise Exception("Error when creating database connection...")
 
-    def getting_raw_data_query_from_mysql(self, query, conn_mysql):
-        """ Reads data from database with mysql query.
-        Args:
-            query (str): Mysql query
-            conn_mysql (engine instance): Mysql engine instance
-        Returns:
-            (Dataframe): A dataframe queried with given parameters.
+    def reading_rawdata(self, query, db_conn, table_name):
+        """ Reading row data from db with sql query.
+        Args: 
+            query (str): Database username
+            db_conn (Database instance): Engine instance
+            table_name (str): database table name for dataframe
+        Returns: data (DataFrame): A dataframe ingested with sql query
         """
         try:
-            print("Getting raw data from MySQL...")
-            return pd.read_sql_query(text(query), conn_mysql)
-        except Exception as e:
-            print(e.args)
-            sys.exit(1)
+            print("Reading data from {0}...".format(table_name))
+            return pd.read_sql_query(query, db_conn)
+        except Exception:
+            raise Exception("Error when reading rawdata...")
+        finally:
+            db_conn.close()
+
+    def writing_to_db(self, data, db_conn, table_name, chunksize=10000, if_exists="append"):
+        """ Writing detected anomalies to database table.
+        Args:
+            data (DataFrame): DataFrame that be written to database.
+            db_conn (Database instance): Engine instance
+            table_name (str): database table name for dataframe
+            chunksize (integer): number of rows in each batch to be written.
+            if_exists (str): appending new values to existing db table
+        Returns: None
+        """
+        try:
+            print("Writing data to {0}...".format(table_name))
+            data.to_sql(name=table_name, con=db_conn,
+                        chunksize=chunksize, if_exists=if_exists)
+        except Exception:
+            raise Exception("Error when writing data to table...")
+        finally:
+            db_conn.close()
+
+
+class CloudDB:
+
+    def __init__(self, key_path, project_name):
+        """Get the connection configuration for GCP BigQuery.
+        Args:
+            key_path (str): Service account JSON file path
+            project_name (str): Contains BigQuery project name
+        """
+        try:
+            self.key_path = key_path
+            self.project_name = project_name
+            self.credentials = service_account.Credentials.from_service_account_file(
+                self.key_path, scopes=[
+                    "https://www.googleapis.com/auth/cloud-platform"]
+            )
+            self.bqclient = bigquery.Client(
+                credentials=self.credentials,
+                project=self.credentials.project_id,
+            )
+        except Exception:
+            raise Exception(
+                "Error when setting GCP BigQuery configurations...")
+
+    def reading_raw_data(self, query_string):
+        """ Reading raw data from BigQuery.
+        Args:
+            query_string (str): It cantains the query
+        Returns: Dataframe
+        """
+        try:
+            return self.bqclient.query(query_string).result().to_dataframe()
+        except Exception:
+            raise Exception(
+                "Something went wrong when reading raw data to data frame...")
+
+    def writing_to_bq(self, dataframe, dataset, table_name):
+        """It writes dataframe to bq, If table is exist it adds inside of it, else it
+            creates table first.
+        Args:
+            dataframe (DataFrame): Contains the values we want to write to bq
+            dataset (str): Contains BigQuery dataset name
+            table_name (str): Contains BigQuery table name
+        Returns: If result is succeeded empty list will return
+        """
+        try:
+            print("Writing data to {0}...".format(table_name))
+            table_id = "{0}.{1}.{2}".format(
+                self.project_name, dataset, table_name)
+            job = self.bqclient.load_table_from_dataframe(
+                dataframe, table_id
+            )
+            return job.result()
+        except Exception:
+            raise Exception(
+                "Something went wrong when writing  data to BigQuery table...")
+
 
 class File:
+
     def __init__(self) -> None:
         pass
 
-    def read_from_csv(self, file_path, filter=None):
+    def read_from_csv(self, time_column_name, file_path, filter=None):
+        """ Reads data from csv file.
+        Args:
+            time_column_name (str): name of the time column in dataset
+            file_path (str): file path of csv file
+            filter (array): column_name,value
+        Returns:
+            df_ (dataframe): read dataframe
         """
-        :param file_path: string
-        :param filter: array [column_name,value]
-        :return: dataframe
+        try:
+            df = pd.read_csv(file_path)
+            df_ = df[df[filter[0]] == filter[1]].reset_index(
+                drop=True) if filter else df
+            df_[time_column_name] = pd.to_datetime(df_[time_column_name])
+            return df_
+        except Exception:
+            raise Exception(
+                "Something went wrong when reading raw data from csv file...")
+
+    def writing_to_csv(self, data, file_path, index=False):
+        """ Writes data to csv file.
+        Args:
+            data (DataFrame): dataframe that will be written to csv
+            file_path (str): csv file path of dataframe to write
+            index (boolean): booelan value of whether add or not index to csv
+        Returns: None
         """
-        df = pd.read_csv(file_path)
-        df_ = df[df[filter[0]] == filter[1]].reset_index(drop=True) if filter != None else df
-        
-        return df_
+        try:
+            print("Writing data to csv...")
+            data.to_csv(file_path, index=index)
+        except Exception:
+            raise Exception("Error when writing data to csv...")

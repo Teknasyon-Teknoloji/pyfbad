@@ -1,65 +1,29 @@
 pyfbad
 ==============================
 
+**Deployment & Documentation**
+
+[<img alt="" src = "https://img.shields.io/badge/pypi-v0.2.0-brightgreen">](https://pypi.org/project/pyfbad/)
+
+-----
+
 The pyfbad library supports anomaly detection projects. An end-to-end anomaly detection application can be written using the source codes of this library only.
 
-Given below is a basic application. Each section has more alternatives like mysql under database, slack under notification or isolation forest under model.
+Given below is a basic application. Each module has more alternatives as follows;
+
+• Database module -> Relational databases-(PostgreSQL,MySQL, etc.), NoSQL-(MongoDB) database or Cloud-(BigQuery)
+
+• Models module   -> IsolationForest, LocalOutlierFactor, Prophet, GaussianMixtureModel
+
+• Notification module -> Slack
 
 **Installation**:
 
-Python 2 is no longer supported. Make sure Python3+ is used as the programming language. The optimal version would be Python 3.7. It is recommended to use **pip** or **conda** for installation. Please make sure
+Python 2 is no longer supported. Make sure Python3.7+ is used as the programming language. The optimal version would be Python 3.7. It is recommended to use **pip** or **conda** for installation. Please make sure
 **the latest version** is installed, as pyfbad is updated frequently:
 
     pip install pyfbad            # normal install
     pip install --upgrade pyfbad  # or update if needed
-
-**Database operations**:
-
-    # connet to mongodb
-    from pyfbad.data import database as db
-    database_obj = db.MongoDB('db_name', PORT, 'db_path')
-    database = database_obj.get_mongo_db()
-
-    # check the collections
-    collections = dataset_obj.get_collection_names(database)
-
-    # buil mongodb query
-    filter = dataset_obj.add_filter(
-    [],
-    'time',
-    {
-        "column_name": "datetime",
-        "date_type": "hourly",
-        "start_time": "2019-02-06 00:00:00",
-        "finish_time": "2019-10-06 00:00:00"
-    })
-
-    # get data from db as dataframe
-    data = dataset_obj.get_data_as_df(
-        database=database,
-        collection=collections[0],
-        filter=filter
-    )
-
-**Feature Operations**:
-
-    from pyfbad.features import create_feature as cf
-    cf_obj = cf.Features()
-    df_model = cf_obj.get_model_data(df=df, time_column_name="_id.datetime", value_column_name="_id.count", filter=['_id.country','TR'])
-
-**Model Operations**:
-
-    from pyfbad.models import models as md
-    models=md.Model_Prophet()
-    model_result = models.train_model(df_model)
-    anomaly_result = models.train_forecast(model_result)
-
-**Notification Operations**:
-
-    from pyfbad.notification import notifications as nt
-    gmail_obj = nt.Email()
-    if 1 or -1 in anomaly_result['anomaly']:
-        gmail_obj.send_gmail('sample_from@gmail.com','password','sample_to@gmail.com')
 
 **Required Dependencies**:
 
@@ -99,7 +63,7 @@ Project Organization
     │   └── pyfbad
     │      ├── __init__.py    <- Makes pyfbad a Python module
     │      │
-    │      ├── data           <- Scripts to read raw data
+    │      ├── data           <- Scripts to read raw data from different sources
     │      │   └── database.py
     │      │   └── __init__.py
     │      │
@@ -108,13 +72,16 @@ Project Organization
     │      │   └── __init__.py
     │      │
     │      ├── models         <- Scripts to train models and then use trained models to make
-    │      │   │                 predictions
+    │      │   │                 predictions for anomaly detection
     │      │   └── models.py
     │      │   └── __init__.py
     │      │
-    │      └── notification  <- Scripts for setting up notification systems.
-    │          └── notification.py
+    │      │── notification  <- Scripts for setting up notification systems.
+    │      │    └── notification.py
+    │      │    └── __init__.py
+    │      │
+    │      └── visualization  <- Scripts for visualizing of detected anomalies
+    │          └── visualizations.py
     │          └── __init__.py
     │
     └── tox.ini            <- tox file with settings for running tox; see tox.readthedocs.io
-
