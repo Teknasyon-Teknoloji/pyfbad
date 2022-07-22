@@ -22,7 +22,7 @@ class Features:
             return df_[columns] \
                 .rename(columns={time_column_name: 'ds', value_column_name: 'y'}) \
                 .sort_values('ds', ascending=True) \
-                .reset_index(drop=True)
+                .reset_index()
         except Exception:
             raise Exception(
                 "Error when cleaning dataframe to extract features...")
