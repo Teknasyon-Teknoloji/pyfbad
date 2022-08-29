@@ -68,7 +68,7 @@ class Features:
 
             df_model = self.extract_time_features(df_model)
 
-            if model_name in ["IF", "LOF"]:
+            if model_name in ["IF", "LOF", "INNE"]:
                 return df_model.drop(['quarter', 'is_weekday'], axis=1)
             elif model_name == "GMM":
                 return df_model.drop(['day_of_year'], axis=1)
