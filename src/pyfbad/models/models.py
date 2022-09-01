@@ -9,33 +9,6 @@ import numpy as np
 import pandas as pd
 
 
-class IsolationNNEModel:
-    def train_model(self, df_model, contamination_value=float(0.06)):
-        """Train a INNE model and make prediction with given dataframe.
-        Args:
-            df_model (Dataframe): Dataframe ready to use train model
-            contamination_value (float): It contains default float value for contamination parameter
-        Returns:
-            df_model (Dataframe): The results of the anomaly forecasting
-        """
-        try:
-            df_columns = df_model.columns
-            model = IsolationNNE(
-                n_estimators=100,
-                max_samples="auto",
-                contamination=contamination_value,
-                random_state=41,
-            )
-            model.fit(df_model[df_columns])
-            df_model["score"] = (model.decision_function(df_model[df_columns])) * (-100)
-            df_model["anomaly"] = model.predict(df_model[df_columns])
-            df_model["anomaly"][df_model["anomaly"] == 1] = 0
-            df_model["anomaly"][df_model["anomaly"] == -1] = 1
-            return df_model.reset_index()[["ds", "y", "score", "anomaly"]]
-        except Exception:
-            raise Exception("Error when the INNE model training and prediction...")
-
-
 class IsolationForestModel:
     def train_model(self, df_model, contamination_value=float(0.06)):
         """Train a Isolation Forest model and make prediction with given dataframe.
