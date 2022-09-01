@@ -4,7 +4,7 @@
 
 project = 'PYFBAD'
 copyright = '2022, Teknasyon'
-author = 'GETCONTACT DATAT TEAM'
+author = 'GETCONTACT DATA TEAM'
 
 release = '0.1'
 version = '0.1.1'
