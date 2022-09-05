@@ -1,4 +1,4 @@
-Welcome to PAYFBAD's documentation!
+Welcome to PYFBAD's documentation!
 ===================================
 
 **PAYFBAD** is a open-source Python package for *unsupervised time-series anomaly detection* It contains a few models,
