@@ -3,7 +3,8 @@ pyfbad
 
 **Deployment & Documentation**
 
-[<img alt="" src = "https://img.shields.io/badge/pypi-v0.2.0-brightgreen">](https://pypi.org/project/pyfbad/)
+[<img alt="" src = "https://img.shields.io/badge/pypi-v0.2.0-brightgreen">](https://pypi.org/project/pyfbad/) 
+[<img alt="" src = "https://readthedocs.org/projects/docs/badge/?version=latest">](https://pyfbad.readthedocs.io/en/latest/) 
 
 -----
 
